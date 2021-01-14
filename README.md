@@ -2,17 +2,19 @@
 
 ```
                                       bat
-									  
+                                      
 NAME
-	bat - battery management utility for Linux laptops
+    bat - battery management utility for Linux laptops 
 
 SYNOPSIS
-	bat [OPTION]
-	
+    bat [OPTION]
+    
 DESCRIPTION
-    -c, --capacity,     print current battery level
-    -h, --help,         print this help document
-    -t, --threshold,    print the current charging threshold limit
+    -c, --capacity      print current battery level
+    -h, --help          print this help document
+    -p, --persist       persist the current threshold setting between restarts
+                        (requires sudo permissions)
+    -t, --threshold     print the current charging threshold limit
                         append a value between 1 and 100 to set a new threshold
     -s, --status        print charging status
 ```
@@ -30,3 +32,7 @@ Alternatively, one could build the binary oneself by running the following [Go](
 $ go build bat.go
 ```
 and placing the resulting binary in a directory that is in their `$PATH` such as `/usr/local/bin`.
+
+## Requirements
+
+To persist threshold settings between restarts, the application relies on [Bash](https://www.gnu.org/software/bash/) and [systemd](https://systemd.io/) which are bundled with most Linux distributions.
