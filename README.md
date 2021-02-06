@@ -2,13 +2,13 @@
 
 ```
                                       bat
-                                      
+
 NAME
-    bat - battery management utility for Linux laptops 
+    bat - battery management utility for Linux laptops
 
 SYNOPSIS
     bat [OPTION]
-    
+
 DESCRIPTION
     -c, --capacity      print current battery level
     -h, --help          print this help document
@@ -16,23 +16,48 @@ DESCRIPTION
                         (requires sudo permissions)
     -t, --threshold     print the current charging threshold limit
                         append a value between 1 and 100 to set a new threshold
+                        e.g bat --threshold 80
     -s, --status        print charging status
 ```
 
 ## About
 
-Aims to replicate the functionality of the [ASUS Battery Health Charging](https://www.asus.com/us/support/FAQ/1032726/) utility for ASUS laptops on Windows which aims to prolong the battery's life-span <a href="https://electrek.co/2017/09/01/tesla-battery-expert-recommends-daily-battery-pack-charging/"><sup>1</sup></a> <a href="https://batteryuniversity.com/learn/article/how_to_prolong_lithium_based_batteries"><sup>2</sup></a>.
+The goal is to replicate the functionality of the [ASUS Battery Health Charging](https://www.asus.com/us/support/FAQ/1032726/) utility for ASUS laptops on Windows which aims prolong the battery's life-span <a href="https://electrek.co/2017/09/01/tesla-battery-expert-recommends-daily-battery-pack-charging/"><sup>1</sup></a> <a href="https://batteryuniversity.com/learn/article/how_to_prolong_lithium_based_batteries"><sup>2</sup></a>.
 
 ## Installation
 
-Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases).
+Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.3/bat).
 
-Alternatively, one could build the binary oneself by running the following [Go](https://golang.org/) command,
+After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
+
+```shell
+$ chmod +x $HOME/Downloads/bat
+```
+
+Alternatively, the application can be build from source by running the following [Go](https://golang.org/) command.
+
 ```shell
 $ go build bat.go
 ```
-and placing the resulting binary in a directory that is in their `$PATH` such as `/usr/local/bin`.
+
+**Tip**: Place the resulting binary in a directory that is in the `$PATH` environment variable such as `/usr/local/bin/`. This will allow the user to execute the program from anywhere on their system.
+
+**Another tip**: Rename the binary to something else if another program with the same name already exists on your system i.e. [bat](https://github.com/sharkdp/bat).
+
+## Examples
+
+```shell
+# Print the current battery charging threshold.
+$ bat --threshold
+
+# Set a new charging threshold, say 80%.
+$ bat --threshold 80
+
+# Persist the current charging threshold setting between restarts
+# (requires superuser permissions).
+$ sudo bat --persist
+```
 
 ## Requirements
 
-To persist threshold settings between restarts, the application relies on [Bash](https://www.gnu.org/software/bash/) and [systemd](https://systemd.io/) which are bundled with most Linux distributions.
+To persist the charging threshold setting between restarts, the application relies on [systemd](https://systemd.io/) which is bundled with most Linux distributions.

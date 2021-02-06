@@ -26,6 +26,7 @@ DESCRIPTION
                         (requires sudo permissions)
     -t, --threshold,    print the current charging threshold limit
                         append a value between 1 and 100 to set a new threshold
+                        e.g bat --threshold 80
     -s, --status        print charging status
 
 REFERENCE
@@ -42,7 +43,7 @@ StartLimitBurst=0
 [Service]
 Type=oneshot
 Restart=on-failure
-ExecStart=/bin/bash -c 'echo %s > /sys/class/power_supply/BAT0/charge_control_end_threshold'
+ExecStart=/bin/sh -c 'echo %s > /sys/class/power_supply/BAT0/charge_control_end_threshold'
 
 [Install]
 WantedBy=multi-user.target
@@ -77,7 +78,7 @@ func persist() {
             os.Exit(1)
         } else {
             log.Fatal(err)
-        } 
+        }
     }
     defer f.Close()
     f.WriteString(service)
