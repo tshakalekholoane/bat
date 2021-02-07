@@ -26,7 +26,7 @@ The goal is to replicate the functionality of the [ASUS Battery Health Charging]
 
 ## Installation
 
-Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.3/bat).
+Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.3.1/bat).
 
 After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
 
@@ -60,4 +60,6 @@ $ sudo bat --persist
 
 ## Requirements
 
-To persist the charging threshold setting between restarts, the application relies on [systemd](https://systemd.io/) which is bundled with most Linux distributions.
+Linux kernel version later than 5.4 which is the [earliest version to expose the battery charging threshold variable](https://github.com/torvalds/linux/commit/7973353e92ee1e7ca3b2eb361a4b7cb66c92abee).
+
+To persist threshold settings between restarts, the application relies on [Bash](https://www.gnu.org/software/bash/) and [systemd](https://systemd.io/) which are bundled with most Linux distributions.
