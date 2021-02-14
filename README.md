@@ -2,7 +2,6 @@
 
 ```
                                       bat
-
 NAME
     bat - battery management utility for Linux laptops
 
@@ -10,14 +9,16 @@ SYNOPSIS
     bat [OPTION]
 
 DESCRIPTION
-    -c, --capacity      print current battery level
+    -c, --capacity      print the current battery level
     -h, --help          print this help document
-    -p, --persist       persist the current threshold setting between restarts
-                        (requires sudo permissions)
+    -p, --persist       persist the current charging threshold setting between
+                        restarts (requires sudo permissions)
+    -r, --reset         prevents the charging threshold from persisting between
+                        restarts
+    -s, --status        print the charging status
     -t, --threshold     print the current charging threshold limit
-                        append a value between 1 and 100 to set a new threshold
-                        e.g bat --threshold 80
-    -s, --status        print charging status
+                        specify a value between 1 and 100 to set a new threshold
+                        e.g. bat --threshold 80
 ```
 
 ## About
@@ -26,7 +27,7 @@ The goal is to replicate the functionality of the [ASUS Battery Health Charging]
 
 ## Installation
 
-Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.3.1/bat).
+Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.4/bat).
 
 After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
 

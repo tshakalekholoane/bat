@@ -1,6 +1,7 @@
 package main
 
 import (
+    "bytes"
     "errors"
     "fmt"
     "log"
@@ -21,14 +22,16 @@ SYNOPSIS
     bat [OPTION]
 
 DESCRIPTION
-    -c, --capacity,     print current battery level
-    -h, --help,         print this help document
-    -p, --persist       persist the current threshold setting between restarts
-                        (requires sudo permissions)
-    -t, --threshold,    print the current charging threshold limit
-                        append a value between 1 and 100 to set a new threshold
-                        e.g bat --threshold 80
+    -c, --capacity      print the current battery level
+    -h, --help          print this help document
+    -p, --persist       persist the current charging threshold setting between
+                        restarts (requires sudo permissions)
+    -r, --reset         prevents the charging threshold from persisting between
+                        restarts
     -s, --status        print charging status
+    -t, --threshold     print the current charging threshold limit
+                        specify a value between 1 and 100 to set a new threshold
+                        e.g. bat --threshold 80
 
 REFERENCE
     https://wiki.archlinux.org/index.php/Laptop/ASUS#Battery_charge_threshold
@@ -36,19 +39,36 @@ REFERENCE
                                 13 JANUARY 2021
 `
 
-// scat returns a string of a file's contents.
-func scat(path string) string {
-    cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("cat %s", path))
+// hasRequiredKernelVer returns true if the Linux kernel version of the
+// system in question is later than 5.4 and returns false otherwise.
+func hasRequiredKernelVer() bool {
+    cmd := exec.Command("uname", "-r")
     out, err := cmd.Output()
     if err != nil {
         log.Fatal(err)
     }
-    return strings.TrimSpace(string(out))
+    re := regexp.MustCompile(`[0-9]+\.[0-9]+`)
+    ver := string(re.Find(out))
+    maj, _ := strconv.Atoi(strings.Split(ver, ".")[0])
+    min, _ := strconv.Atoi(strings.Split(ver, ".")[1])
+    if maj >= 5 {
+        if maj == 5 {
+            if min >= 4 {
+                return true
+            }
+            // Minor version < 4.
+            return false
+        }
+        // Major version > 5.
+        return true
+    }
+    // Major version < 5.
+    return false
 }
 
 // page invokes the less pager on a specified string.
 func page(out string) {
-    cmd := exec.Command("/bin/less")
+    cmd := exec.Command("less")
     cmd.Stdin = strings.NewReader(out)
     cmd.Stdout = os.Stdout
     err := cmd.Run()
@@ -79,11 +99,10 @@ WantedBy=multi-user.target
     f, err := os.Create("/etc/systemd/system/bat.service")
     if err != nil {
         if strings.HasSuffix(err.Error(), ": permission denied") {
-            fmt.Println("This command requires running with sudo.")
+            fmt.Println("This command requires sudo permissions.")
             os.Exit(1)
-        } else {
-            log.Fatal(err)
         }
+        log.Fatal(err)
     }
     defer f.Close()
     f.WriteString(service)
@@ -92,6 +111,45 @@ WantedBy=multi-user.target
     if err != nil {
         log.Fatal(err)
     }
+}
+
+// reset disables the systemd service that persists the charging
+// threshold between restarts.
+func reset() {
+    err := os.Remove("/etc/systemd/system/bat.service")
+    if err != nil {
+        switch {
+        case strings.HasSuffix(err.Error(), ": permission denied"):
+            fmt.Println("This command requires sudo permissions.")
+            os.Exit(1)
+        case strings.HasSuffix(err.Error(), ": no such file or directory"):
+            break
+        default:
+            log.Fatal(err)
+        }
+    }
+    cmd := exec.Command("systemctl", "disable", "bat.service")
+    var stdErr bytes.Buffer
+    cmd.Stderr = &stdErr
+    err = cmd.Run()
+    if err != nil {
+        switch msg := strings.TrimSpace(stdErr.String()); {
+        case strings.HasSuffix(msg, ": Unit file bat.service does not exist."):
+            break
+        default:
+            log.Fatal(err)
+        }
+    }
+}
+
+// scat returns a string of a file's contents.
+func scat(path string) string {
+    cmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("cat %s", path))
+    out, err := cmd.Output()
+    if err != nil {
+        log.Fatal(err)
+    }
+    return strings.TrimSpace(string(out))
 }
 
 // setThreshold sets the charging threshold by writing to the
@@ -110,33 +168,6 @@ func setThreshold(t int) {
         os.Exit(1)
     }
     fmt.Printf("\rCharging threshold set to %d.\n", t)
-}
-
-// hasRequiredKernelVer returns true if the Linux kernel version of the
-// system in question is later than 5.4 and returns false otherwise.
-func hasRequiredKernelVer() bool {
-    cmd := exec.Command("uname", "-r")
-    out, err := cmd.Output()
-    if err != nil {
-        log.Fatal(err)
-    }
-    re := regexp.MustCompile(`[0-9]+\.[0-9]+`)
-    ver := string(re.Find(out))
-    maj, _ := strconv.Atoi(strings.Split(ver, ".")[0])
-    min, _ := strconv.Atoi(strings.Split(ver, ".")[1])
-    if maj >= 5 {
-        if maj == 5 {
-            if min >= 4 {
-                return true
-            }
-            // Minor version < 4.
-            return false
-        }
-        // Major version > 5.
-        return true
-    }
-    // Major version < 5.
-    return false
 }
 
 func main() {
@@ -158,6 +189,10 @@ func main() {
         page(help)
     case "-p", "--persist":
         persist()
+    case "-r", "--reset":
+        reset()
+    case "-s", "--status":
+        fmt.Println(scat("/sys/class/power_supply/BAT?/status"))
     case "-t", "--threshold":
         switch {
         case n > 3:
@@ -180,8 +215,6 @@ func main() {
         default:
             fmt.Println(scat("/sys/class/power_supply/BAT?/charge_control_end_threshold"))
         }
-    case "-s", "--status":
-        fmt.Println(scat("/sys/class/power_supply/BAT?/status"))
     default:
         fmt.Printf("There is no %s option. Use bat --help to see a list of"+
             "available options.\n", os.Args[1])
