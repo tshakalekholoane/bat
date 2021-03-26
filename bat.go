@@ -26,12 +26,13 @@ DESCRIPTION
     -c, --capacity      print the current battery level
     -h, --help          print this help document
     -p, --persist       persist the current charging threshold setting between
-                        restarts (requires sudo permissions)
+                        restarts (requires superuser permissions)
     -r, --reset         prevents the charging threshold from persisting between
                         restarts
     -s, --status        print charging status
     -t, --threshold     print the current charging threshold limit
                         specify a value between 1 and 100 to set a new threshold
+                        (the latter requires superuser permissions)
                         e.g. bat --threshold 80
 
 REFERENCE
@@ -48,7 +49,7 @@ func hasRequiredKernelVer() bool {
     if err != nil {
         log.Fatal(err)
     }
-    re := regexp.MustCompile(`[0-9]+\.[0-9]+`)
+    re := regexp.MustCompile(`\d+\.\d+`)
     ver := string(re.Find(out))
     maj, _ := strconv.Atoi(strings.Split(ver, ".")[0])
     min, _ := strconv.Atoi(strings.Split(ver, ".")[1])
@@ -67,6 +68,22 @@ func hasRequiredKernelVer() bool {
     return false
 }
 
+// hasRequiredSystemdVer returns true if the systemd version of the
+// system in question is later than 244 and returns false otherwise.
+func hasRequiredSystemdVer() bool {
+    cmd := exec.Command("systemctl", "--version")
+    out, err := cmd.Output()
+    if err != nil {
+        log.Fatal(err)
+    }
+    re := regexp.MustCompile(`\d+`)
+    ver, _ := strconv.Atoi(string(re.Find(out)))
+    if ver < 244 {
+        return false
+    }
+    return true
+}
+
 // page invokes the less pager on a specified string.
 func page(out string) {
     cmd := exec.Command("less")
@@ -79,12 +96,19 @@ func page(out string) {
 }
 
 // persist persists the prevailing battery charging threshold level
-// between restarts by creating or updating a systemd service with the
-// name `bat.service`.
+// between restarts and hibernation by creating or updating the systemd
+// services `bat-boot.service` and `bat-sleep.service`.
 func persist() {
-    service := fmt.Sprintf(
+    if !hasRequiredSystemdVer() {
+        fmt.Println("Requires systemd version 244 or later.")
+        os.Exit(1)
+    }
+
+    // Write systemd service that will persist the threshold after
+    // restarts.
+    bootUnit := fmt.Sprintf(
         `[Unit]
-Description=Set the battery charging threshold
+Description=Persist the battery charging threshold between restarts
 After=multi-user.target
 StartLimitBurst=0
 
@@ -97,7 +121,7 @@ ExecStart=/bin/bash -c 'echo %s > /sys/class/power_supply/BAT?/charge_control_en
 WantedBy=multi-user.target
         `,
         scat("/sys/class/power_supply/BAT?/charge_control_end_threshold"))
-    f, err := os.Create("/etc/systemd/system/bat.service")
+    bootService, err := os.Create("/etc/systemd/system/bat-boot.service")
     if err != nil {
         if strings.HasSuffix(err.Error(), ": permission denied") {
             fmt.Println("This command requires sudo permissions.")
@@ -105,9 +129,42 @@ WantedBy=multi-user.target
         }
         log.Fatal(err)
     }
-    defer f.Close()
-    f.WriteString(service)
-    cmd := exec.Command("systemctl", "enable", "bat.service")
+    defer bootService.Close()
+    bootService.WriteString(bootUnit)
+
+    // Enable the service.
+    cmd := exec.Command("systemctl", "enable", "bat-boot.service")
+    err = cmd.Run()
+    if err != nil {
+        log.Fatal(err)
+    }
+
+    // Write systemd service that will persist the threshold after
+    // hibernation.
+    sleepUnit := fmt.Sprintf(
+        `[Unit]
+Description=Persist the battery charging threshold after hibernation 
+Before=sleep.target
+StartLimitBurst=0
+
+[Service]
+Type=oneshot
+Restart=on-failure
+ExecStart=/bin/bash -c 'echo %s > /sys/class/power_supply/BAT?/charge_control_end_threshold'
+
+[Install]
+WantedBy=sleep.target
+        `,
+        scat("/sys/class/power_supply/BAT?/charge_control_end_threshold"))
+    sleepService, err := os.Create("/etc/systemd/system/bat-sleep.service")
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer sleepService.Close()
+    sleepService.WriteString(sleepUnit)
+
+    // Enable the service.
+    cmd = exec.Command("systemctl", "enable", "bat-sleep.service")
     err = cmd.Run()
     if err != nil {
         log.Fatal(err)
@@ -115,9 +172,11 @@ WantedBy=multi-user.target
 }
 
 // reset disables the systemd service that persists the charging
-// threshold between restarts.
+// threshold between restarts and hibernation.
 func reset() {
-    err := os.Remove("/etc/systemd/system/bat.service")
+    // Delete service that persists the charging threshold between
+    // restarts.
+    err := os.Remove("/etc/systemd/system/bat-boot.service")
     if err != nil {
         switch {
         case strings.HasSuffix(err.Error(), ": permission denied"):
@@ -129,15 +188,31 @@ func reset() {
             log.Fatal(err)
         }
     }
-    cmd := exec.Command("systemctl", "disable", "bat.service")
+    cmd := exec.Command("systemctl", "disable", "bat-boot.service")
     var stdErr bytes.Buffer
     cmd.Stderr = &stdErr
     err = cmd.Run()
     if err != nil {
-        switch msg := strings.TrimSpace(stdErr.String()); {
-        case strings.HasSuffix(msg, ": Unit file bat.service does not exist."):
-            break
-        default:
+        msg := strings.TrimSpace(stdErr.String())
+        if !strings.HasSuffix(msg, " file bat-boot.service does not exist.") {
+            log.Fatal(err)
+        }
+    }
+
+    // Delete the service that persists the charging threshold after
+    // hibernation.
+    err = os.Remove("/etc/systemd/system/bat-sleep.service")
+    if err != nil {
+        if !strings.HasSuffix(err.Error(), ": no such file or directory") {
+            log.Fatal(err)
+        }
+    }
+    cmd = exec.Command("systemctl", "disable", "bat-sleep.service")
+    cmd.Stderr = &stdErr
+    err = cmd.Run()
+    if err != nil {
+        msg := strings.TrimSpace(stdErr.String())
+        if !strings.HasSuffix(msg, " file bat-sleep.service does not exist.") {
             log.Fatal(err)
         }
     }

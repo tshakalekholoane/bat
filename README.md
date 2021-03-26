@@ -12,12 +12,13 @@ DESCRIPTION
     -c, --capacity      print the current battery level
     -h, --help          print this help document
     -p, --persist       persist the current charging threshold setting between
-                        restarts (requires sudo permissions)
+                        restarts (requires superuser permissions)
     -r, --reset         prevents the charging threshold from persisting between
                         restarts
-    -s, --status        print the charging status
+    -s, --status        print charging status
     -t, --threshold     print the current charging threshold limit
                         specify a value between 1 and 100 to set a new threshold
+                        (the latter requires superuser permissions)
                         e.g. bat --threshold 80
 ```
 
@@ -31,7 +32,7 @@ This has only shown to work on ASUS laptops. For Dell systems, see [smbios-utils
 
 ## Installation
 
-Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.4.1/bat).
+Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.5/bat).
 
 After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
 
@@ -57,7 +58,7 @@ $ bat --threshold
 
 # Set a new charging threshold, say 80%.
 # (requires superuser permissions).
-$ bat --threshold 80
+$ sudo bat --threshold 80
 
 # Persist the current charging threshold setting between restarts
 # (requires superuser permissions).
@@ -68,4 +69,4 @@ $ sudo bat --persist
 
 Linux kernel version later than 5.4 which is the [earliest version to expose the battery charging threshold variable](https://github.com/torvalds/linux/commit/7973353e92ee1e7ca3b2eb361a4b7cb66c92abee).
 
-To persist threshold settings between restarts, the application relies on [Bash](https://www.gnu.org/software/bash/) and [systemd](https://systemd.io/) which are bundled with most Linux distributions.
+To persist the threshold setting between restarts, the application relies on [systemd](https://systemd.io/), particularly a version later than 244, and [Bash](https://www.gnu.org/software/bash/) which are bundled with most Linux distributions. 
