@@ -7,6 +7,7 @@ import (
     "log"
     "os"
     "os/exec"
+    "path/filepath"
     "regexp"
     "strconv"
     "strings"
@@ -153,21 +154,30 @@ func scat(path string) string {
 }
 
 // setThreshold sets the charging threshold by writing to the
-// `charge_control_end_threshold` file after gaining root user
+// `charge_control_end_threshold` variable after gaining superuser
 // permissions and prints a message to the terminal about the status of
 // the operation.
-func setThreshold(t int) {
-    st := fmt.Sprintf("echo %d > "+
-        "/sys/class/power_supply/BAT?/charge_control_end_threshold", t)
-    cmd := exec.Command("su", "-c", st)
-    fmt.Print("Root password: ")
-    cmd.Stdin = os.Stdin
-    err := cmd.Run()
+func setThreshold(threshold int) {
+    files, err := filepath.Glob("/sys/class/power_supply/BAT?/charge_control_end_threshold")
     if err != nil {
-        fmt.Println("\rAuthentication failure.")
+        log.Fatal(err)
+    }
+    if len(files) == 0 {
+        fmt.Println("This program is most likely not compatible with your system.")
+        fmt.Println("See https://github.com/leveson/bat#disclaimer for details.")
         os.Exit(1)
     }
-    fmt.Printf("\rCharging threshold set to %d.\n", t)
+    f, err := os.Create(files[0])
+    if err != nil {
+        if strings.HasSuffix(err.Error(), ": permission denied") {
+            fmt.Println("This command requires sudo permissions.")
+            os.Exit(1)
+        }
+        log.Fatal(err)
+    }
+    defer f.Close()
+    f.WriteString(fmt.Sprint(threshold))
+    fmt.Printf("\rCharging threshold set to %d.\n", threshold)
 }
 
 func main() {
@@ -198,7 +208,7 @@ func main() {
         case n > 3:
             fmt.Println("Expects a single argument.")
         case n == 3:
-            t, err := strconv.Atoi(os.Args[2])
+            threshold, err := strconv.Atoi(os.Args[2])
             if err != nil {
                 if errors.Is(err, strconv.ErrSyntax) {
                     fmt.Println("Argument should be an integer.")
@@ -207,16 +217,17 @@ func main() {
                     log.Fatal(err)
                 }
             }
-            if t < 1 || t > 100 {
+            if threshold < 1 || threshold > 100 {
                 fmt.Println("Number should be between 1 and 100.")
                 os.Exit(1)
             }
-            setThreshold(t)
+            setThreshold(threshold)
         default:
             fmt.Println(scat("/sys/class/power_supply/BAT?/charge_control_end_threshold"))
         }
     default:
-        fmt.Printf("There is no %s option. Use bat --help to see a list of"+
-            "available options.\n", os.Args[1])
+        fmt.Printf(
+            "There is no %s option. Use bat --help to see a list of available options.\n",
+            os.Args[1])
     }
 }
