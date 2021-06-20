@@ -1,25 +1,32 @@
 # `bat`
 
-```
-                                      bat
+```                                     bat(1)
 NAME
-    bat - battery management utility for Linux laptops
+    bat -- battery management utility for Linux laptops 
 
 SYNOPSIS
-    bat [OPTION]
+    bat [-chprst] [-t num]
 
 DESCRIPTION
-    -c, --capacity      print the current battery level
-    -h, --help          print this help document
-    -p, --persist       persist the current charging threshold setting between
-                        restarts (requires superuser permissions)
-    -r, --reset         prevents the charging threshold from persisting between
-                        restarts
-    -s, --status        print charging status
-    -t, --threshold     print the current charging threshold limit
-                        specify a value between 1 and 100 to set a new threshold
-                        (the latter requires superuser permissions)
-                        e.g. bat --threshold 80
+    The following options are available:
+
+    -c, --capacity  
+        Print the current battery level.
+    -h, --help      
+        Print this help document.
+    -p, --persist   
+        Persist the current threshold between restarts.
+    -r, --reset    
+        Undoes the persistence setting of the charging threshold between 
+        restarts.
+    -s, --status
+        Print the charging status.
+    -t, --threshold num
+        Print the current charging threshold limit.
+        If num is specified, which should be a value between 1 and 100, this
+        will set a new charging threshold limit.
+    -v, --version
+        Display version information and exit.
 ```
 
 ## About
@@ -30,9 +37,11 @@ The goal is to replicate the functionality of the [ASUS Battery Health Charging]
 
 This has only shown to work on ASUS laptops. For Dell systems, see [smbios-utils](https://github.com/dell/libsmbios), particularly the `smbios-battery-ctl` command, or install it using your package manager. For other manufacturers there is also [TLP](https://linrunner.de/tlp/).
 
+There have also been some [problems setting the charging threshold inside of a virtual machine](https://github.com/leveson/bat/issues/3#issuecomment-858581495).
+
 ## Installation
 
-Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.5/bat).
+Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.6/bat).
 
 After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
 
