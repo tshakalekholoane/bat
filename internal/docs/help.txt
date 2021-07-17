@@ -1,0 +1,50 @@
+                                     bat(1)
+NAME
+    bat -- battery management utility for Linux laptops 
+
+SYNOPSIS
+    bat [-chprst] [-t num]
+
+DESCRIPTION
+    The following options are available:
+
+    -c, --capacity  
+        Print the current battery level.
+    -h, --help      
+        Print this help document.
+    -p, --persist   
+        Persist the current threshold between restarts.
+    -r, --reset    
+        Undoes the persistence setting of the charging threshold between 
+        restarts.
+    -s, --status
+        Print the charging status.
+    -t, --threshold num
+        Print the current charging threshold limit.
+        If num is specified, which should be a value between 1 and 100, this
+        will set a new charging threshold limit.
+    -v, --version
+        Display version information and exit.
+
+EXAMPLES
+    - Print the current battery charging threshold.
+
+        $ bat --threshold
+    
+    - Set a new charging threshold, say of 80%. This usually requires superuser
+      permissions.
+
+        $ sudo bat --threshold 80
+    
+    - Persist the current charging threshold setting between restarts. This also
+      usually requires superuser permissions.
+
+        $ sudo bat --persist
+
+SUPPORT
+    Report any issues on https://github.com/leveson/bat/issues.
+
+REFERENCE
+    https://wiki.archlinux.org/title/Laptop/ASUS#Battery_charge_threshold
+
+                                  10 JUNE 2021

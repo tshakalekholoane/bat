@@ -41,7 +41,7 @@ There have also been some [problems setting the charging threshold inside of a v
 
 ## Installation
 
-Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.6/bat).
+Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.7/bat).
 
 After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
 
@@ -52,7 +52,7 @@ $ chmod +x $HOME/Downloads/bat
 Alternatively, the application can be build from source by running the following [Go](https://golang.org/) command.
 
 ```shell
-$ go build bat.go
+$ go build ./cmd/bat/
 ```
 
 **Tip**: Place the resulting binary in a directory that is in the `$PATH` environment variable such as `/usr/local/bin/`. This will allow the user to execute the program from anywhere on their system.
