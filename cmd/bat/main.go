@@ -62,7 +62,7 @@ func main() {
                 log.Fatal(err)
             }
         }
-        fmt.Println("Persistence of the current threshold enabled.")
+        fmt.Println("Persistence of the current charging threshold enabled.")
     case "-r", "--reset":
         err := persist.RemoveServices()
         if err != nil {
@@ -72,6 +72,7 @@ func main() {
             }
             log.Fatal(err)
         }
+        fmt.Println("Charging threshold persistence reset.")
     case "-s", "--status":
         printFile("status")
     case "-t", "--threshold":

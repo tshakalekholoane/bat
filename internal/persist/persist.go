@@ -44,7 +44,7 @@ func hasRequiredSystemd() (bool, error) {
 // level between restarts. If the call is successful, the return value
 // is nil.
 func RemoveServices() error {
-    for _, service := range [2]string{"boot", "sleep"} {
+    for _, service := range [3]string{"boot", "hibernation", "sleep"} {
         err := os.Remove(
             fmt.Sprintf("/etc/systemd/system/bat-%s.service", service))
         if err != nil {
@@ -89,8 +89,9 @@ func WriteServices() error {
     if err != nil {
         return err
     }
-    units := [2]Service{
+    units := [3]Service{
         {"boot", "multi-user", threshold},
+        {"hibernation", "hibernate", threshold},
         {"sleep", "suspend", threshold},
     }
     tmpl, err := template.New("unit").Parse(unit)
