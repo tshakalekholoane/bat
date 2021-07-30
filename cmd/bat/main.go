@@ -47,6 +47,9 @@ func main() {
         err := persist.WriteServices()
         if err != nil {
             switch {
+            case err.Error() == "bash not found":
+                fmt.Println("Requires Bash to persist the charging threshold.")
+                os.Exit(1)
             case err.Error() == "incompatible systemd version":
                 fmt.Println("Requires systemd version 244-rc1 or later.")
                 os.Exit(1)

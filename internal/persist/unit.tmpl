@@ -6,7 +6,7 @@ StartLimitBurst=0
 [Service]
 Type=oneshot
 Restart=on-failure
-ExecStart=/usr/bin/bash -c 'echo {{ .Threshold }} > /sys/class/power_supply/BAT?/charge_control_end_threshold'
+ExecStart={{ .Shell }} -c 'echo {{ .Threshold }} > /sys/class/power_supply/BAT?/charge_control_end_threshold'
 
 [Install]
 WantedBy={{ .Target }}.target

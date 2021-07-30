@@ -18,6 +18,28 @@ import (
 //go:embed unit.tmpl
 var unit string
 
+// bashLocation returns the location of the Bash shell as a string. A
+// successful call returns err == nil. It will return the first instance
+// found starting by searching in /usr/bin/ and then in /bin/ as a last
+// resort.
+func bashLocation() (string, error) {
+    _, err := os.Stat("/usr/bin/bash")
+    if err != nil {
+        if os.IsNotExist(err) {
+            _, err = os.Stat("/bin/bash")
+            if err != nil {
+                if os.IsNotExist(err) {
+                    return "", errors.New("bash not found") 
+                }
+                return "", err
+            }
+            return "/bin/bash", nil
+        }
+        return "", err
+    }
+    return "/usr/bin/bash", nil
+}
+
 // hasRequiredSystemd returns true if the systemd version of the system
 // in question is later than 244 and returns false otherwise. (systemd
 // v244-rc1 is the earliest version to allow restarts for oneshot
@@ -85,14 +107,18 @@ func WriteServices() error {
     if !ok {
         return errors.New("incompatible systemd version")
     }
+    shell, err := bashLocation()
+    if err != nil {
+        return err
+    }
     threshold, err := io.FileContents("charge_control_end_threshold")
     if err != nil {
         return err
     }
     units := [3]Service{
-        {"boot", "multi-user", threshold},
-        {"hibernation", "hibernate", threshold},
-        {"sleep", "suspend", threshold},
+        {"boot", shell, "multi-user", threshold},
+        {"hibernation", shell, "hibernate", threshold},
+        {"sleep", shell, "suspend", threshold},
     }
     tmpl, err := template.New("unit").Parse(unit)
     if err != nil {
