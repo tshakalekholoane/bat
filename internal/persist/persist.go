@@ -18,6 +18,17 @@ import (
 //go:embed unit.tmpl
 var unit string
 
+// units array contains prepopulated Service structs that are used by
+// systemd to support threshold persistence between various suspend or
+// hibernate states.
+var units = [...]Service{
+    {Event: "boot", Target: "multi-user"},
+    {Event: "hibernation", Target: "hibernate"},
+    {Event: "hybridsleep", Target: "hybrid-sleep"},
+    {Event: "sleep", Target: "suspend"},
+    {Event: "suspendthenhibernate", Target: "suspend-then-hibernate"},
+}
+
 // bashLocation returns the location of the Bash shell as a string. A
 // successful call returns err == nil. It will return the first instance
 // found starting by searching in /usr/bin/ and then in /bin/ as a last
@@ -29,7 +40,7 @@ func bashLocation() (string, error) {
             _, err = os.Stat("/bin/bash")
             if err != nil {
                 if os.IsNotExist(err) {
-                    return "", errors.New("bash not found") 
+                    return "", errors.New("bash not found")
                 }
                 return "", err
             }
@@ -66,9 +77,9 @@ func hasRequiredSystemd() (bool, error) {
 // level between restarts. If the call is successful, the return value
 // is nil.
 func RemoveServices() error {
-    for _, service := range [3]string{"boot", "hibernation", "sleep"} {
+    for _, service := range units {
         err := os.Remove(
-            fmt.Sprintf("/etc/systemd/system/bat-%s.service", service))
+            fmt.Sprintf("/etc/systemd/system/bat-%s.service", service.Event))
         if err != nil {
             switch {
             case strings.HasSuffix(err.Error(), "no such file or directory"):
@@ -80,14 +91,14 @@ func RemoveServices() error {
         cmd := exec.Command(
             "systemctl",
             "disable",
-            fmt.Sprintf("bat-%s.service", service))
+            fmt.Sprintf("bat-%s.service", service.Event))
         var stdErr bytes.Buffer
         cmd.Stderr = &stdErr
         err = cmd.Run()
         if err != nil {
             if !strings.HasSuffix(
                 strings.TrimSpace(stdErr.String()),
-                fmt.Sprintf("file bat-%s.service does not exist.", service)) {
+                fmt.Sprintf("bat-%s.service does not exist.", service.Event)) {
                 return err
             }
         }
@@ -115,16 +126,13 @@ func WriteServices() error {
     if err != nil {
         return err
     }
-    units := [3]Service{
-        {"boot", shell, "multi-user", threshold},
-        {"hibernation", shell, "hibernate", threshold},
-        {"sleep", shell, "suspend", threshold},
-    }
     tmpl, err := template.New("unit").Parse(unit)
     if err != nil {
         return err
     }
     for _, service := range units {
+        service.Shell = shell
+        service.Threshold = threshold
         f, err := os.Create(
             fmt.Sprintf("/etc/systemd/system/bat-%s.service", service.Event))
         if err != nil {
