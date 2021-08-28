@@ -1,0 +1,71 @@
+name: Bug Report
+description: File a bug report
+title: "issue: "
+labels: [bug]
+assignees:
+  - leveson
+body:
+  - type: textarea
+    id: describe-issue
+    attributes:
+      label: Subject of the issue
+      description: Describe your issue.
+    validations:
+      required: true
+  - type: textarea
+    id: system
+    attributes:
+      label: Your system
+      description: Describe your system.
+      placeholder: Describe your system.
+      value: "For example,
+
+
+        OS: Manjaro Linux x86_64
+
+        Host: ZenBook UX425EA_UX425EA 1.0
+
+        Kernel: 5.13.8-1-MANJARO"
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: "If you do not know how to retrive this information on your
+        system, try using tools like
+        [pfetch](https://github.com/dylanaraps/pfetch) or
+        [neofetch](https://github.com/dylanaraps/neofetch)."
+  - type: dropdown
+    id: version
+    attributes:
+      label: Version
+      description: Which version of bat are you running?
+      options:
+        - "0.8.2 (Latest)"
+        - "0.8.1"
+        - "0.8"
+        - "0.7"
+        - "0.6"
+        - "0.5"
+        - "0.4.1"
+        - "0.4"
+        - "0.3.1"
+        - "0.3"
+        - "0.2"
+        - "0.1"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Describe how to reproduce this issue.
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What should happen?
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What happens instead?
