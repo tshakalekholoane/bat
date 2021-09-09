@@ -37,11 +37,11 @@ The goal is to replicate the functionality of the [ASUS Battery Health Charging]
 
 This has only shown to work on ASUS laptops. For Dell systems, see [smbios-utils](https://github.com/dell/libsmbios), particularly the `smbios-battery-ctl` command, or install it using your package manager. For other manufacturers there is also [TLP](https://linrunner.de/tlp/).
 
-There have also been some [problems setting the charging threshold inside of a virtual machine](https://github.com/leveson/bat/issues/3#issuecomment-858581495).
+There have also been some [problems setting the charging threshold inside of a virtual machine](https://github.com/tshakalekholoane/bat/issues/3#issuecomment-858581495).
 
 ## Installation
 
-Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/leveson/bat/releases), the latest of which can be downloaded from [here](https://github.com/leveson/bat/releases/download/0.8.2/bat).
+Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/tshakalekholoane/bat/releases), the latest of which can be downloaded from [here](https://github.com/tshakalekholoane/bat/releases/download/0.8.3/bat).
 
 After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
 

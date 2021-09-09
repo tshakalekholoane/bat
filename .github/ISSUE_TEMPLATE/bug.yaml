@@ -3,7 +3,7 @@ description: File a bug report
 title: "issue: "
 labels: [bug]
 assignees:
-  - leveson
+  - tshakalekholoane
 body:
   - type: textarea
     id: describe-issue
@@ -40,7 +40,8 @@ body:
       label: Version
       description: Which version of bat are you running?
       options:
-        - "0.8.2 (Latest)"
+        - "0.8.3 (Latest)"
+        - "0.8.2"
         - "0.8.1"
         - "0.8"
         - "0.7"

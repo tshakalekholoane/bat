@@ -42,7 +42,7 @@ EXAMPLES
         $ sudo bat --persist
 
 SUPPORT
-    Report any issues on https://github.com/leveson/bat/issues.
+    Report any issues on https://github.com/tshakalekholoane/bat/issues.
 
 REFERENCE
     https://wiki.archlinux.org/title/Laptop/ASUS#Battery_charge_threshold
