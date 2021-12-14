@@ -47,4 +47,4 @@ SUPPORT
 REFERENCE
     https://wiki.archlinux.org/title/Laptop/ASUS#Battery_charge_threshold
 
-                                  10 JUNE 2021
+                                13 DECEMBER 2021

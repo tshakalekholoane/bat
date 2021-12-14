@@ -1,3 +1,3 @@
-module github.com/tshakalekholoane/bat
+module tshaka.co/bat
 
 go 1.17

@@ -1,3 +1,4 @@
+// Package docs implements functions for displaying documentation.
 package docs
 
 import (
@@ -7,16 +8,17 @@ import (
 	"strings"
 )
 
-//go:embed help.txt
-var help string
+var (
+	//go:embed help.txt
+	help string
+	//go:embed version.txt
+	version string
+)
 
-//go:embed version.txt
-var version string
-
-// page calls the less pager on the `doc` string input. A successful
-// call returns err == nil.
+// page filters the string doc through the less pager.
 func page(doc string) error {
-	cmd := exec.Command("less", "--IGNORE-CASE", "--quit-if-one-screen")
+	cmd := exec.Command(
+		"less", "--no-init", "--quit-if-one-screen", "--IGNORE-CASE")
 	cmd.Stdin = strings.NewReader(doc)
 	cmd.Stdout = os.Stdout
 	err := cmd.Run()
@@ -26,9 +28,8 @@ func page(doc string) error {
 	return nil
 }
 
-// Help shows the help document through the less pager. A successful
-// call returns err == nil.
-func Help() error {
+// Usage pages the help documentation through less.
+func Usage() error {
 	err := page(help)
 	if err != nil {
 		return err
@@ -36,9 +37,8 @@ func Help() error {
 	return nil
 }
 
-// VersionInfo shows version information through the less pager. A
-// successful call returns err == nil.
-func VersionInfo() error {
+// Version pages version information through less.
+func Version() error {
 	err := page(version)
 	if err != nil {
 		return err
