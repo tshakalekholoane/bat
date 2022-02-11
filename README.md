@@ -35,7 +35,7 @@ The goal is to replicate the functionality of the [ASUS Battery Health Charging]
 
 ## Disclaimer
 
-This has only shown to work on ASUS laptops. For Dell systems, see [smbios-utils](https://github.com/dell/libsmbios), particularly the `smbios-battery-ctl` command, or install it using your package manager. For other manufacturers there is also [TLP](https://linrunner.de/tlp/).
+This has been reported to work with some ASUS and [Lenovo ThinkPad](https://github.com/tshakalekholoane/bat/discussions/23) laptops only. For Dell systems, see [smbios-utils](https://github.com/dell/libsmbios), particularly the `smbios-battery-ctl` command, or install it using your package manager. For other manufacturers there is also [TLP](https://linrunner.de/tlp/).
 
 There have also been some [problems setting the charging threshold inside of a virtual machine](https://github.com/tshakalekholoane/bat/issues/3#issuecomment-858581495).
 
