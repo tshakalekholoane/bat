@@ -2,55 +2,82 @@
 package cli
 
 import (
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
 
-	"tshaka.co/bat/internal/docs"
 	"tshaka.co/bat/internal/file"
-	"tshaka.co/bat/internal/persist"
+	"tshaka.co/bat/internal/services"
 	"tshaka.co/bat/internal/threshold"
 )
 
-// common error messages
+// Common error messages.
 const (
 	incompat = "This program is most likely not compatible with your system. " +
 		"See\nhttps://github.com/tshakalekholoane/bat#disclaimer for details."
 	permissionDenied = "Permission denied. Try running this command using sudo."
 )
 
+// Documentation.
+var (
+	//go:embed help.txt
+	help string
+	//go:embed version.txt
+	version string
+)
+
 // errPermissionDenied indicates that the user has insufficient
 // permissions to perform an action.
 var errPermissionDenied = syscall.EACCES
 
-// context is a helper function that returns an io.Writer and a status
-// code the program should exit with after performing an action.
-func context(fatal bool) (io.Writer, int) {
-	var out io.Writer = os.Stdout
-	var code int
+// context is a helper function that returns an io.Writer and exit code,
+// os.Stderr and 1 if fatal is true and os.Stdout and 0 otherwise.
+func context(fatal bool) (out io.Writer, code int) {
 	if fatal {
 		out = os.Stderr
 		code = 1
+	} else {
+		out = os.Stdout
 	}
-	return out, code
+	return
 }
 
-// reportf formats according to a format specifier and writes to either
-// standard error or standard output depending on the context.
-func reportf(fatal bool, format string, a ...interface{}) {
+// page filters the string doc through the less pager.
+func page(doc string) {
+	cmd := exec.Command(
+		"less",
+		"--no-init",
+		"--quit-if-one-screen",
+		"--IGNORE-CASE",
+		"--RAW-CONTROL-CHARS",
+	)
+	cmd.Stdin = strings.NewReader(doc)
+	cmd.Stdout = os.Stdout
+	if err := cmd.Run(); err != nil {
+		log.Fatalln(err)
+	}
+	os.Exit(0)
+}
+
+// reportf formats a according to a format specifier and prints it to
+// standard error if fatal is true or to standard output otherwise.
+func reportf(fatal bool, format string, a ...any) {
 	out, code := context(fatal)
 	fmt.Fprintf(out, format, a...)
 	os.Exit(code)
 }
 
-// reportln formats using the default formats for its operands, appends
-// a new line and, writes to standard output.
-func reportln(fatal bool, a ...interface{}) {
+// reportln formats a using the default formats for its operands,
+// appends a new line and, writes to standard error if fatal is true or
+// standard output otherwise.
+func reportln(fatal bool, a ...any) {
 	reportf(fatal, "%v\n", a...)
 }
 
@@ -69,25 +96,20 @@ func show(v string) {
 // Run executes the application.
 func Run() {
 	if len(os.Args) == 1 {
-		docs.Usage()
-		os.Exit(0)
+		page(help)
 	}
+
 	switch os.Args[1] {
 	case "-c", "--capacity":
 		show("capacity")
 	case "-h", "--help":
-		err := docs.Usage()
-		if err != nil {
-			log.Fatalln(err)
-		}
-		os.Exit(0)
+		page(help)
 	case "-p", "--persist":
-		err := persist.WriteServices()
-		if err != nil {
+		if err := services.Write(); err != nil {
 			switch {
-			case errors.Is(err, persist.ErrBashNotFound):
-				reportln(true, "Cannot find Bash on your system.")
-			case errors.Is(err, persist.ErrIncompatSystemd):
+			case errors.Is(err, services.ErrBashNotFound):
+				reportln(true, "Could not find Bash on your system.")
+			case errors.Is(err, services.ErrIncompatSystemd):
 				reportln(true, "Requires systemd version 244-rc1 or later.")
 			case errors.Is(err, file.ErrNotFound):
 				reportln(true, incompat)
@@ -99,8 +121,7 @@ func Run() {
 		}
 		reportln(false, "Persistence of the current charging threshold enabled.")
 	case "-r", "--reset":
-		err := persist.DeleteServices()
-		if err != nil {
+		if err := services.Delete(); err != nil {
 			if errors.Is(err, errPermissionDenied) {
 				reportln(true, permissionDenied)
 			}
@@ -121,11 +142,10 @@ func Run() {
 				}
 				log.Fatal(err)
 			}
-			if t < 1 || t > 100 {
+			if !threshold.IsValid(t) {
 				reportln(true, "Number should be between 1 and 100.")
 			}
-			err = threshold.Set(t)
-			if err != nil {
+			if err := threshold.Set(t); err != nil {
 				switch {
 				case errors.Is(err, threshold.ErrIncompatKernel):
 					reportln(true, "Requires Linux kernel version 5.4 or later.")
@@ -145,11 +165,7 @@ func Run() {
 			show("charge_control_end_threshold")
 		}
 	case "-v", "--version":
-		err := docs.Version()
-		if err != nil {
-			log.Fatal(err)
-		}
-		os.Exit(0)
+		page(version)
 	default:
 		reportf(
 			true,

@@ -1,4 +1,4 @@
-// Package file implements a helper function that returns the value of a
+// Package file contains helpers related to reading the contents of a
 // /sys/class/power_supply/BAT?/ variable.
 package file
 
@@ -11,19 +11,18 @@ import (
 var ErrNotFound = errors.New("file: virtual file not found")
 
 // Contents returns the contents of a virtual file in
-// /sys/class/power_supply/BAT?/ as a sequence of bytes.
-func Contents(v string) ([]byte, error) {
-	v = "/sys/class/power_supply/BAT?/" + v
-	matches, err := filepath.Glob(v)
+// /sys/class/power_supply/BAT?/ as a slice of bytes.
+func Contents(f string) ([]byte, error) {
+	matches, err := filepath.Glob("/sys/class/power_supply/BAT?/" + f)
 	if err != nil {
 		return nil, err
 	}
 	if len(matches) == 0 {
 		return nil, ErrNotFound
 	}
-	f, err := os.ReadFile(matches[0])
+	val, err := os.ReadFile(matches[0])
 	if err != nil {
 		return nil, err
 	}
-	return f, nil
+	return val, nil
 }

@@ -1,7 +1,7 @@
-// Package persist implements the functions that are required to create
+// Package services implements the functions that are required to create
 // and delete the systemd services that persist the charging threshold
 // between restarts for this application.
-package persist
+package services
 
 import (
 	"bytes"
@@ -19,6 +19,7 @@ import (
 	"text/template"
 
 	"tshaka.co/bat/internal/file"
+	"tshaka.co/bat/internal/threshold"
 )
 
 // service type holds the fields for variables that go into a systemd
@@ -28,7 +29,7 @@ type service struct {
 	Threshold            int
 }
 
-// errors
+// Errors.
 var (
 	errNoSuchFile      = syscall.ENOENT
 	ErrBashNotFound    = errors.New("persist: bash not found")
@@ -38,7 +39,7 @@ var (
 //go:embed unit.tmpl
 var unit string
 
-// units array contains prepopulated service structs that are used by
+// units array contains populated service structs that are used by
 // systemd to support threshold persistence between various suspend or
 // hibernate states.
 var units = [...]service{
@@ -49,7 +50,7 @@ var units = [...]service{
 	{Event: "suspendthenhibernate", Target: "suspend-then-hibernate"},
 }
 
-// bash returns the path where the Bash shell is located. By convention
+// bash returns the path where the Bash shell is located. By convention,
 // this is either in /usr/bin/ or /bin/ and will return an error
 // otherwise.
 func bash() (string, error) {
@@ -90,10 +91,10 @@ func systemd() (bool, error) {
 	return true, nil
 }
 
-// DeleteServices removes all systemd services created by this
+// Delete removes all systemd services created by this
 // application in order to persist the charging threshold between
 // restarts.
-func DeleteServices() error {
+func Delete() error {
 	errs := make(chan error, len(units))
 	for _, s := range units {
 		go func(s service) {
@@ -119,17 +120,16 @@ func DeleteServices() error {
 		}(s)
 	}
 	for range units {
-		err := <-errs
-		if err != nil {
+		if err := <-errs; err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-// WriteServices creates all the systemd services required to persist
+// Write creates all the systemd services required to persist
 // the charging threshold between restarts.
-func WriteServices() error {
+func Write() error {
 	ok, err := systemd()
 	if err != nil {
 		return err
@@ -145,12 +145,12 @@ func WriteServices() error {
 	if err != nil {
 		return err
 	}
-	threshold, err := strconv.Atoi(strings.TrimSpace(string(limit)))
+	t, err := strconv.Atoi(strings.TrimSpace(string(limit)))
 	if err != nil {
 		return err
 	}
-	if threshold < 1 || threshold > 100 {
-		log.Fatal(fmt.Errorf("persist: invalid threshold value %d", threshold))
+	if !threshold.IsValid(t) {
+		log.Fatalf("persist: invalid threshold value %d\n", t)
 	}
 	tmpl, err := template.New("unit").Parse(unit)
 	if err != nil {
@@ -160,7 +160,7 @@ func WriteServices() error {
 	for _, s := range units {
 		go func(s service) {
 			s.Shell = shell
-			s.Threshold = threshold
+			s.Threshold = t
 			f, err := os.Create(
 				fmt.Sprintf("/etc/systemd/system/bat-%s.service", s.Event))
 			if err != nil {
@@ -168,15 +168,13 @@ func WriteServices() error {
 				return
 			}
 			defer f.Close()
-			err = tmpl.Execute(f, s)
-			if err != nil {
+			if err := tmpl.Execute(f, s); err != nil {
 				errs <- err
 				return
 			}
 			cmd := exec.Command(
 				"systemctl", "enable", fmt.Sprintf("bat-%s.service", s.Event))
-			err = cmd.Run()
-			if err != nil {
+			if err := cmd.Run(); err != nil {
 				errs <- err
 				return
 			}
@@ -184,8 +182,7 @@ func WriteServices() error {
 		}(s)
 	}
 	for range units {
-		err := <-errs
-		if err != nil {
+		if err := <-errs; err != nil {
 			return err
 		}
 	}

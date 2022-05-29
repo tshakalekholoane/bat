@@ -1,3 +1,0 @@
-bat 0.8.4
-Copyright (c) 2021 Tshaka Eric Lekholoane.
-MIT Licence.

@@ -4,7 +4,6 @@ package threshold
 
 import (
 	"errors"
-	"fmt"
 	"math"
 	"os"
 	"os/exec"
@@ -16,20 +15,19 @@ import (
 	"tshaka.co/bat/internal/file"
 )
 
+// variable represents the path of the charging threshold variable.
+var variable = "/sys/class/power_supply/BAT?/charge_control_end_threshold"
+
 var ErrIncompatKernel = errors.New("incompatible kernel version")
 
-// kernel returns true if the Linux kernel version of the system in
-// question is later than 5.4 and returns false otherwise. (This is the
+// isRequiredKernel returns true if the string ver represents a
+// semantic version later than 5.4 and false otherwise (this is the
 // earliest version of the Linux kernel to expose the battery charging
-// threshold).
-func kernel() (bool, error) {
-	cmd := exec.Command("uname", "--kernel-release")
-	out, err := cmd.Output()
-	if err != nil {
-		return false, err
-	}
+// threshold variable). It also returns an error if it failed parse the
+// string.
+func isRequiredKernel(ver string) (bool, error) {
 	re := regexp.MustCompile(`\d+\.\d+`)
-	v := string(re.Find(out))
+	ver = re.FindString(ver)
 	maj, min, err := func(ver string) (int, int, error) {
 		f, err := strconv.ParseFloat(strings.TrimSpace(ver), 64)
 		if err != nil {
@@ -38,36 +36,46 @@ func kernel() (bool, error) {
 		maj := int(f)
 		min := (f - float64(maj)) * math.Pow10(len(strings.Split(ver, ".")[1]))
 		return maj, int(min), nil
-	}(v)
+	}(ver)
 	if err != nil {
 		return false, err
 	}
-	if maj >= 5 {
-		if maj == 5 {
-			if min >= 4 {
-				return true, nil
-			}
-			// 5.0 < 5.4
-			return false, nil
-		}
-		// >= 6.0 🤷‍♀️
+	if maj > 5 /* 🤷 */ || (maj == 5 && min >= 4) {
 		return true, nil
 	}
-	// <= 4.x
 	return false, nil
+}
+
+// kernel returns the Linux kernel version as a string and an error
+// otherwise.
+func kernel() (string, error) {
+	cmd := exec.Command("uname", "--kernel-release")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+// IsValid returns true if v is in the range 1..=100.
+func IsValid(v int) bool {
+	return !(v < 1 || v > 100)
 }
 
 // Set overrides the charging threshold with t.
 func Set(t int) error {
-	ok, err := kernel()
+	ver, err := kernel()
+	if err != nil {
+		return err
+	}
+	ok, err := isRequiredKernel(ver)
 	if err != nil {
 		return err
 	}
 	if !ok {
 		return ErrIncompatKernel
 	}
-	matches, err := filepath.Glob(
-		"/sys/class/power_supply/BAT?/charge_control_end_threshold")
+	matches, err := filepath.Glob(variable)
 	if err != nil {
 		return err
 	}
@@ -79,6 +87,6 @@ func Set(t int) error {
 		return err
 	}
 	defer f.Close()
-	f.WriteString(fmt.Sprint(t))
+	f.WriteString(strconv.FormatInt(int64(t), 10))
 	return nil
 }

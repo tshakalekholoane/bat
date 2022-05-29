@@ -2,6 +2,9 @@ bat
 !bat/
 *.zip
 
+# Development
+.vscode
+
 # Binaries for programs and plugins
 *.exe
 *.exe~
