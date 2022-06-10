@@ -8,7 +8,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -50,33 +49,23 @@ var units = [...]service{
 	{Event: "suspendthenhibernate", Target: "suspend-then-hibernate"},
 }
 
-// bash returns the path where the Bash shell is located. By convention,
-// this is either in /usr/bin/ or /bin/ and will return an error
-// otherwise.
+// bash returns the path where the Bash shell is located.
 func bash() (string, error) {
-	_, err := os.Stat("/usr/bin/bash")
+	path, err := exec.LookPath("bash")
 	if err != nil {
-		if errors.Is(err, fs.ErrNotExist) {
-			_, err = os.Stat("/bin/bash")
-			if err != nil {
-				if errors.Is(err, fs.ErrNotExist) {
-					return "", ErrBashNotFound
-				}
-				return "", err
-			}
-			return "/bin/bash", nil
+		if errors.Is(err, exec.ErrNotFound) {
+			return "", ErrBashNotFound
 		}
 		return "", err
 	}
-	return "/usr/bin/bash", nil
+	return path, nil
 }
 
 // systemd returns true if the systemd version of the system in question
 // is later than 244 and returns false otherwise. (systemd v244-rc1 is
 // the earliest version to allow restarts for oneshot services).
 func systemd() (bool, error) {
-	cmd := exec.Command("systemctl", "--version")
-	out, err := cmd.Output()
+	out, err := exec.Command("systemctl", "--version").Output()
 	if err != nil {
 		return false, err
 	}
