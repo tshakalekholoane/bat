@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 )
 
+// ErrNotFound indicates a virtual file that does not exist in the path
+// provided.
 var ErrNotFound = errors.New("file: virtual file not found")
 
 // Contents returns the contents of a virtual file in
@@ -17,9 +19,11 @@ func Contents(f string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+
 	if len(matches) == 0 {
 		return nil, ErrNotFound
 	}
+
 	val, err := os.ReadFile(matches[0])
 	if err != nil {
 		return nil, err

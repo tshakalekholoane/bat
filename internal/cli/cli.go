@@ -37,15 +37,15 @@ var (
 // permissions to perform an action.
 var errPermissionDenied = syscall.EACCES
 
-// context is a helper function that returns an io.Writer and exit code,
-// os.Stderr and 1 if fatal is true and os.Stdout and 0 otherwise.
+// context is a helper function that returns an io.Writer and exit code.
+// It returns os.Stderr and 1 if fatal is true and os.Stdout and 0
+// otherwise.
 func context(fatal bool) (out io.Writer, code int) {
 	if fatal {
-		out = os.Stderr
-		code = 1
-	} else {
-		out = os.Stdout
+		out, code = os.Stderr, 1
+		return
 	}
+	out = os.Stdout
 	return
 }
 
@@ -142,9 +142,11 @@ func Run() {
 				}
 				log.Fatal(err)
 			}
+
 			if !threshold.IsValid(t) {
 				reportln(true, "Number should be between 1 and 100.")
 			}
+
 			if err := threshold.Set(t); err != nil {
 				switch {
 				case errors.Is(err, threshold.ErrIncompatKernel):
