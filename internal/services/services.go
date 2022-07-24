@@ -28,10 +28,11 @@ type service struct {
 	Threshold            int
 }
 
-// Errors.
 var (
-	errNoSuchFile      = syscall.ENOENT
-	ErrBashNotFound    = errors.New("persist: bash not found")
+	// ErrBashNotFound indicates the absence of the Bash shell in the
+	// user's $PATH.
+	ErrBashNotFound = errors.New("persist: Bash not found")
+	// ErrIncompatSystemd indicates an incompatible version of systemd.
 	ErrIncompatSystemd = errors.New("persist: incompatible systemd version")
 )
 
@@ -69,11 +70,13 @@ func systemd() (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	re := regexp.MustCompile(`\d+`)
 	ver, err := strconv.Atoi(string(re.Find(out)))
 	if err != nil {
 		return false, err
 	}
+
 	if ver < 244 {
 		return false, nil
 	}
@@ -87,18 +90,16 @@ func Delete() error {
 	errs := make(chan error, len(units))
 	for _, s := range units {
 		go func(s service) {
-			err := os.Remove(
-				fmt.Sprintf("/etc/systemd/system/bat-%s.service", s.Event))
-			if err != nil && !errors.Is(err, errNoSuchFile) {
+			err := os.Remove(fmt.Sprintf("/etc/systemd/system/bat-%s.service", s.Event))
+			if err != nil && !errors.Is(err, syscall.ENOENT /* no such file */) {
 				errs <- err
 				return
 			}
-			cmd := exec.Command(
-				"systemctl", "disable", fmt.Sprintf("bat-%s.service", s.Event))
+
+			cmd := exec.Command("systemctl", "disable", fmt.Sprintf("bat-%s.service", s.Event))
 			var buf bytes.Buffer
 			cmd.Stderr = &buf
-			err = cmd.Run()
-			if err != nil && !strings.Contains(
+			if err := cmd.Run(); err != nil && !strings.Contains(
 				strings.TrimSpace(buf.String()),
 				fmt.Sprintf("bat-%s.service does not exist.", s.Event),
 			) {
@@ -148,21 +149,21 @@ func Write() error {
 	errs := make(chan error, len(units))
 	for _, s := range units {
 		go func(s service) {
-			s.Shell = shell
-			s.Threshold = t
-			f, err := os.Create(
-				fmt.Sprintf("/etc/systemd/system/bat-%s.service", s.Event))
+			s.Shell, s.Threshold = shell, t
+
+			f, err := os.Create(fmt.Sprintf("/etc/systemd/system/bat-%s.service", s.Event))
 			if err != nil {
 				errs <- err
 				return
 			}
 			defer f.Close()
+
 			if err := tmpl.Execute(f, s); err != nil {
 				errs <- err
 				return
 			}
-			cmd := exec.Command(
-				"systemctl", "enable", fmt.Sprintf("bat-%s.service", s.Event))
+
+			cmd := exec.Command("systemctl", "enable", fmt.Sprintf("bat-%s.service", s.Event))
 			if err := cmd.Run(); err != nil {
 				errs <- err
 				return
@@ -170,6 +171,7 @@ func Write() error {
 			errs <- nil
 		}(s)
 	}
+
 	for range units {
 		if err := <-errs; err != nil {
 			return err

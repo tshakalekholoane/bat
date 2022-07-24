@@ -18,7 +18,8 @@ import (
 // variable represents the path of the charging threshold variable.
 var variable = "/sys/class/power_supply/BAT?/charge_control_end_threshold"
 
-var ErrIncompatKernel = errors.New("incompatible kernel version")
+// ErrIncompatKernel indicates an incompatible Linux kernel version.
+var ErrIncompatKernel = errors.New("threshold: incompatible kernel version")
 
 // isRequiredKernel returns true if the string ver represents a
 // semantic version later than 5.4 and false otherwise (this is the
@@ -40,6 +41,7 @@ func isRequiredKernel(ver string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
+
 	if maj > 5 /* 🤷 */ || (maj == 5 && min >= 4) {
 		return true, nil
 	}
@@ -75,6 +77,7 @@ func Set(t int) error {
 	if !ok {
 		return ErrIncompatKernel
 	}
+
 	matches, err := filepath.Glob(variable)
 	if err != nil {
 		return err
@@ -82,11 +85,13 @@ func Set(t int) error {
 	if len(matches) == 0 {
 		return file.ErrNotFound
 	}
+
 	f, err := os.Create(matches[0])
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+
 	f.WriteString(strconv.FormatInt(int64(t), 10))
 	return nil
 }
