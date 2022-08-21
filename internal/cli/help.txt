@@ -3,43 +3,51 @@ NAME
     bat -- battery management utility for Linux laptops 
 
 SYNOPSIS
-    bat [-chprst] [-t num]
+    bat [-hv]
+        [--help] [--version]
+        <command> [<arg>]
 
-DESCRIPTION
-    The following options are available:
-
-    -c, --capacity  
-        Print the current battery level.
+OPTIONS
     -h, --help      
         Print this help document.
-    -p, --persist   
-        Persist the current threshold between restarts.
-    -r, --reset    
-        Undoes the persistence setting of the charging threshold between 
-        restarts.
-    -s, --status
-        Print the charging status.
-    -t, --threshold num
-        Print the current charging threshold limit.
-        If num is specified, which should be a value between 1 and 100, this
-        will set a new charging threshold limit.
+
     -v, --version
         Display version information and exit.
+
+COMMANDS
+    capacity
+        Print the current battery level.
+
+    persist   
+        Persist the current threshold between restarts.
+
+    reset    
+        Undoes the persistence setting of the charging threshold between 
+        restarts.
+
+    status
+        Print the charging status.
+
+    threshold num
+        Print the current charging threshold limit.
+
+        If num is specified--which should be a value between 1 and 100--this
+        will set a new charging threshold limit.
 
 EXAMPLES
     - Print the current battery charging threshold.
 
-        $ bat --threshold
+        $ bat threshold
     
-    - Set a new charging threshold, say of 80%. This usually requires superuser
-      permissions.
+    - Set a charging threshold that will stop charging at 80%. This requires
+      superuser permissions.
 
-        $ sudo bat --threshold 80
+        $ sudo bat threshold 80
     
     - Persist the current charging threshold setting between restarts. This also
-      usually requires superuser permissions.
+      requires superuser permissions.
 
-        $ sudo bat --persist
+        $ sudo bat persist
 
 SUPPORT
     Report any issues on https://github.com/tshakalekholoane/bat/issues.
@@ -47,4 +55,4 @@ SUPPORT
 REFERENCE
     https://wiki.archlinux.org/title/Laptop/ASUS#Battery_charge_threshold
 
-                                  28 MAY 2022
+                                 21 AUGUST 2022
