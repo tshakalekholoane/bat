@@ -5,28 +5,36 @@ NAME
     bat -- battery management utility for Linux laptops 
 
 SYNOPSIS
-    bat [-chprst] [-t num]
+    bat [-hv]
+        [--help] [--version]
+        <command> [<arg>]
 
-DESCRIPTION
-    The following options are available:
-
-    -c, --capacity  
-        Print the current battery level.
+OPTIONS
     -h, --help      
         Print this help document.
-    -p, --persist   
-        Persist the current threshold between restarts.
-    -r, --reset    
-        Undoes the persistence setting of the charging threshold between 
-        restarts.
-    -s, --status
-        Print the charging status.
-    -t, --threshold num
-        Print the current charging threshold limit.
-        If num is specified, which should be a value between 1 and 100, this
-        will set a new charging threshold limit.
+
     -v, --version
         Display version information and exit.
+
+COMMANDS
+    capacity
+        Print the current battery level.
+
+    persist   
+        Persist the current threshold between restarts.
+
+    reset    
+        Undoes the persistence setting of the charging threshold between 
+        restarts.
+
+    status
+        Print the charging status.
+
+    threshold num
+        Print the current charging threshold limit.
+
+        If num is specified--which should be a value between 1 and 100--this
+        will set a new charging threshold limit.
 ```
 
 ## About
@@ -41,7 +49,7 @@ There have also been some [problems setting the charging threshold inside of a v
 
 ## Installation
 
-Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/tshakalekholoane/bat/releases), the latest of which can be downloaded from [here](https://github.com/tshakalekholoane/bat/releases/download/0.9.1/bat).
+Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/tshakalekholoane/bat/releases), the latest of which can be downloaded from [here](https://github.com/tshakalekholoane/bat/releases/download/0.10/bat).
 
 After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
 
@@ -49,10 +57,10 @@ After downloading the binary, give it permission to execute on your system by ru
 $ chmod +x $HOME/Downloads/bat
 ```
 
-Alternatively, the application can be build from source by running the following [Go](https://golang.org/) command.
+Alternatively, the application can be build from source by running the following command in the root directory of this repository. This requires a working version of [Make](https://www.gnu.org/software/make/) and [Go](https://golang.org/) on your system.
 
 ```shell
-$ go build ./cmd/bat/
+$ make build
 ```
 
 **Tip**: Place the resulting binary in a directory that is in the `$PATH` environment variable such as `/usr/local/bin/`. This will allow the user to execute the program from anywhere on their system.
@@ -63,15 +71,15 @@ $ go build ./cmd/bat/
 
 ```shell
 # Print the current battery charging threshold.
-$ bat --threshold
+$ bat threshold
 
 # Set a new charging threshold, say 80% (requires superuser 
 # permissions).
-$ sudo bat --threshold 80
+$ sudo bat threshold 80
 
 # Persist the current charging threshold setting between restarts 
 # (requires superuser permissions).
-$ sudo bat --persist
+$ sudo bat persist
 ```
 
 ## Requirements

@@ -5,48 +5,46 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
-	"tshaka.co/bat/internal/file"
 	"tshaka.co/bat/internal/services"
 	"tshaka.co/bat/internal/threshold"
+	"tshaka.co/bat/internal/variable"
 )
 
 // Common error messages.
 const (
-	incompat = "This program is most likely not compatible with your system. " +
-		"See\nhttps://github.com/tshakalekholoane/bat#disclaimer for details."
-	permissionDenied = "Permission denied. Try running this command using sudo."
-)
-
-// Documentation.
-var (
-	//go:embed help.txt
-	help string
-	//go:embed version.txt
-	version string
+	incompat = `This program is most likely not compatible with your system. See
+https://github.com/tshakalekholoane/bat#disclaimer for details.`
+	noPermission = "Permission denied. Try running this command using sudo."
 )
 
 // errPermissionDenied indicates that the user has insufficient
 // permissions to perform an action.
 var errPermissionDenied = syscall.EACCES
 
-// context is a helper function that returns an io.Writer and exit code.
-// It returns os.Stderr and 1 if fatal is true and os.Stdout and 0
-// otherwise.
-func context(fatal bool) (out io.Writer, code int) {
-	if fatal {
-		out, code = os.Stderr, 1
-		return
-	}
-	out = os.Stdout
-	return
+//go:embed help.txt
+var help string
+
+// ver is the version information evaluated at compile time.
+var ver string
+
+// version returns the version information as a string.
+func version(semver string, now time.Time) string {
+	var buf strings.Builder
+	buf.WriteString("bat ")
+	buf.WriteString(semver)
+	buf.WriteString("\nCopyright (c) ")
+	buf.WriteString(strconv.Itoa(now.Year()))
+	buf.WriteString(" Tshaka Eric Lekholoane.")
+	buf.WriteString("\nMIT Licence.")
+	return buf.String()
 }
 
 // page filters the string doc through the less pager.
@@ -66,31 +64,41 @@ func page(doc string) {
 	os.Exit(0)
 }
 
-// reportf formats a according to a format specifier and prints it to
-// standard error if fatal is true or to standard output otherwise.
-func reportf(fatal bool, format string, a ...any) {
-	out, code := context(fatal)
-	fmt.Fprintf(out, format, a...)
-	os.Exit(code)
+// errorf formats according to a format specifier, prints to standard
+// error, and exits with an error code 1.
+func errorf(format string, a ...any) {
+	fmt.Fprintf(os.Stderr, format, a...)
+	os.Exit(1)
 }
 
-// reportln formats a using the default formats for its operands,
-// appends a new line and, writes to standard error if fatal is true or
-// standard output otherwise.
-func reportln(fatal bool, a ...any) {
-	reportf(fatal, "%v\n", a...)
+// errorln formats using the default format for its operands, appends a
+// new line, writes to standard error, and exits with error code 1.
+func errorln(a ...any) {
+	errorf("%v\n", a...)
+}
+
+// writef formats according to a format specifier, prints to standard
+// input.
+func writef(format string, a ...any) {
+	fmt.Fprintf(os.Stdout, format, a...)
+}
+
+// writeln formats using the default format for its operands, appends a
+// new line, and writes to standard input.
+func writeln(a ...any) {
+	writef("%v\n", a...)
 }
 
 // show prints the value of a /sys/class/power_supply/BAT?/ variable.
 func show(v string) {
-	c, err := file.Contents(v)
+	c, err := variable.Val(v)
 	if err != nil {
-		if errors.Is(err, file.ErrNotFound) {
-			reportln(true, incompat)
+		if errors.Is(err, variable.ErrNotFound) {
+			errorln(incompat)
 		}
 		log.Fatalln(err)
 	}
-	reportln(false, strings.TrimSpace(string(c)))
+	writeln(strings.TrimSpace(string(c)))
 }
 
 // Run executes the application.
@@ -100,79 +108,77 @@ func Run() {
 	}
 
 	switch os.Args[1] {
-	case "-c", "--capacity":
-		show("capacity")
+	// Generic program information.
 	case "-h", "--help":
 		page(help)
-	case "-p", "--persist":
+	case "-v", "--version":
+		page(version(ver, time.Now()))
+	// Subcommands.
+	case "capacity":
+		show("capacity")
+	case "persist":
 		if err := services.Write(); err != nil {
 			switch {
 			case errors.Is(err, services.ErrBashNotFound):
-				reportln(true, "Could not find Bash on your system.")
+				errorln("Could not find Bash on your system.")
 			case errors.Is(err, services.ErrIncompatSystemd):
-				reportln(true, "Requires systemd version 244-rc1 or later.")
-			case errors.Is(err, file.ErrNotFound):
-				reportln(true, incompat)
+				errorln("Requires systemd version 244-rc1 or later.")
+			case errors.Is(err, variable.ErrNotFound):
+				errorln(incompat)
 			case errors.Is(err, errPermissionDenied):
-				reportln(true, permissionDenied)
+				errorln(noPermission)
 			default:
 				log.Fatalln(err)
 			}
 		}
-		reportln(false, "Persistence of the current charging threshold enabled.")
-	case "-r", "--reset":
+		writeln("Persistence of the current charging threshold enabled.")
+	case "reset":
 		if err := services.Delete(); err != nil {
 			if errors.Is(err, errPermissionDenied) {
-				reportln(true, permissionDenied)
+				errorln(noPermission)
 			}
 			log.Fatal(err)
 		}
-		reportln(false, "Charging threshold persistence reset.")
-	case "-s", "--status":
+		writeln("Charging threshold persistence reset.")
+	case "status":
 		show("status")
-	case "-t", "--threshold":
+	case "threshold":
 		switch {
 		case len(os.Args) > 3:
-			reportln(true, "Expects a single argument.")
+			errorln("Expects a single argument.")
 		case len(os.Args) == 3:
 			t, err := strconv.Atoi(os.Args[2])
 			if err != nil {
 				if errors.Is(err, strconv.ErrSyntax) {
-					reportln(true, "Argument should be an integer.")
+					errorln("Argument should be an integer.")
 				}
 				log.Fatal(err)
 			}
 
 			if !threshold.IsValid(t) {
-				reportln(true, "Number should be between 1 and 100.")
+				errorln("Number should be between 1 and 100.")
 			}
 
 			if err := threshold.Set(t); err != nil {
 				switch {
 				case errors.Is(err, threshold.ErrIncompatKernel):
-					reportln(true, "Requires Linux kernel version 5.4 or later.")
-				case errors.Is(err, file.ErrNotFound):
-					reportln(true, incompat)
+					errorln("Requires Linux kernel version 5.4 or later.")
+				case errors.Is(err, variable.ErrNotFound):
+					errorln(incompat)
 				case errors.Is(err, errPermissionDenied):
-					reportln(true, permissionDenied)
+					errorln(noPermission)
 				default:
 					log.Fatal(err)
 				}
 			}
-			reportln(
-				false,
-				"Charging threshold set.\nUse `sudo bat --persist` to persist the "+
-					"setting between restarts.")
+			writeln("Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
 		default:
 			show("charge_control_end_threshold")
 		}
-	case "-v", "--version":
-		page(version)
 	default:
-		reportf(
-			true,
-			"There is no %s option. Run `bat --help` to see a list of available "+
-				"options.\n",
-			os.Args[1])
+		errorf(
+			"There is no %s option. Run `bat --help` to see a list of available options.\n",
+			os.Args[1],
+		)
 	}
 }

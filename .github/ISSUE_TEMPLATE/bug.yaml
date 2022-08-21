@@ -30,7 +30,7 @@ body:
       required: true
   - type: markdown
     attributes:
-      value: "If you do not know how to retrive this information on your
+      value: "If you do not know how to retrieve this information on your
         system, try using tools like
         [pfetch](https://github.com/dylanaraps/pfetch) or
         [neofetch](https://github.com/dylanaraps/neofetch)."
@@ -40,7 +40,8 @@ body:
       label: Version
       description: Which version of bat are you running?
       options:
-        - "0.9.1 (Latest)"
+        - "0.10 (Latest)"
+        - "0.9.1"
         - "0.9"
         - "0.8.4"
         - "0.8.3"
