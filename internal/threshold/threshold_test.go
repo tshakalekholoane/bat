@@ -28,7 +28,7 @@ func FuzzSet(f *testing.F) {
 		defer os.Remove(file.Name())
 
 		// Reassign charging threshold variable path for testing.
-		variable = file.Name()
+		threshold = file.Name()
 
 		if err := Set(want); err != nil {
 			t.Fatalf("failed to set charging threshold, %v", err)
@@ -114,7 +114,7 @@ func TestSet(t *testing.T) {
 	defer os.Remove(f.Name())
 
 	// Reassign charging threshold variable path for testing.
-	variable = f.Name()
+	threshold = f.Name()
 
 	// Generate random threshold value.
 	rand.Seed(time.Now().UnixNano())

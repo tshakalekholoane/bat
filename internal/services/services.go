@@ -7,7 +7,6 @@ import (
 	"bytes"
 	_ "embed"
 	"errors"
-	"fmt"
 	"log"
 	"os"
 	"os/exec"
@@ -17,8 +16,8 @@ import (
 	"syscall"
 	"text/template"
 
-	"tshaka.co/bat/internal/file"
 	"tshaka.co/bat/internal/threshold"
+	"tshaka.co/bat/internal/variable"
 )
 
 // service type holds the fields for variables that go into a systemd
@@ -31,9 +30,9 @@ type service struct {
 var (
 	// ErrBashNotFound indicates the absence of the Bash shell in the
 	// user's $PATH.
-	ErrBashNotFound = errors.New("persist: Bash not found")
+	ErrBashNotFound = errors.New("services: Bash not found")
 	// ErrIncompatSystemd indicates an incompatible version of systemd.
-	ErrIncompatSystemd = errors.New("persist: incompatible systemd version")
+	ErrIncompatSystemd = errors.New("services: incompatible systemd version")
 )
 
 //go:embed unit.tmpl
@@ -83,26 +82,23 @@ func systemd() (bool, error) {
 	return true, nil
 }
 
-// Delete removes all systemd services created by this
-// application in order to persist the charging threshold between
-// restarts.
+// Delete removes all systemd services created by bat in order to
+// persist the charging threshold between restarts.
 func Delete() error {
 	errs := make(chan error, len(units))
 	for _, s := range units {
 		go func(s service) {
-			err := os.Remove(fmt.Sprintf("/etc/systemd/system/bat-%s.service", s.Event))
+			err := os.Remove("/etc/systemd/system/bat-" + s.Event + ".service")
 			if err != nil && !errors.Is(err, syscall.ENOENT /* no such file */) {
 				errs <- err
 				return
 			}
 
-			cmd := exec.Command("systemctl", "disable", fmt.Sprintf("bat-%s.service", s.Event))
+			cmd := exec.Command("systemctl", "disable", "bat-"+s.Event+".service")
 			var buf bytes.Buffer
 			cmd.Stderr = &buf
-			if err := cmd.Run(); err != nil && !strings.Contains(
-				strings.TrimSpace(buf.String()),
-				fmt.Sprintf("bat-%s.service does not exist.", s.Event),
-			) {
+			if err := cmd.Run(); err != nil &&
+				!bytes.Contains(bytes.TrimSpace(buf.Bytes()), []byte("bat-"+s.Event+".service does not exist.")) {
 				errs <- err
 				return
 			}
@@ -127,11 +123,13 @@ func Write() error {
 	if !ok {
 		return ErrIncompatSystemd
 	}
+
 	shell, err := bash()
 	if err != nil {
 		return err
 	}
-	limit, err := file.Contents("charge_control_end_threshold")
+
+	limit, err := variable.Val("charge_control_end_threshold")
 	if err != nil {
 		return err
 	}
@@ -140,8 +138,9 @@ func Write() error {
 		return err
 	}
 	if !threshold.IsValid(t) {
-		log.Fatalf("persist: invalid threshold value %d\n", t)
+		log.Fatalf("services: invalid threshold value %d\n", t)
 	}
+
 	tmpl, err := template.New("unit").Parse(unit)
 	if err != nil {
 		return err
@@ -150,8 +149,7 @@ func Write() error {
 	for _, s := range units {
 		go func(s service) {
 			s.Shell, s.Threshold = shell, t
-
-			f, err := os.Create(fmt.Sprintf("/etc/systemd/system/bat-%s.service", s.Event))
+			f, err := os.Create("/etc/systemd/system/bat-" + s.Event + ".service")
 			if err != nil {
 				errs <- err
 				return
@@ -163,7 +161,7 @@ func Write() error {
 				return
 			}
 
-			cmd := exec.Command("systemctl", "enable", fmt.Sprintf("bat-%s.service", s.Event))
+			cmd := exec.Command("systemctl", "enable", "bat-"+s.Event+".service")
 			if err := cmd.Run(); err != nil {
 				errs <- err
 				return
