@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/exec"
@@ -16,6 +17,12 @@ import (
 	"tshaka.co/bat/internal/services"
 	"tshaka.co/bat/internal/threshold"
 	"tshaka.co/bat/internal/variable"
+)
+
+// Unix status codes.
+const (
+	success = iota
+	failure
 )
 
 // Common error messages.
@@ -47,21 +54,36 @@ func version(semver string, now time.Time) string {
 	return buf.String()
 }
 
+// console represents a text terminal user interface.
+type console struct {
+	// err represents standard error.
+	err io.Writer
+	// out represents standard output.
+	out io.Writer
+	// pager is the path of pager pager.
+	pager string
+	// quit is the function that sets the exit code.
+	quit func(code int)
+}
+
 // page filters the string doc through the less pager.
-func page(doc string) {
+func (c *console) page(doc string) {
 	cmd := exec.Command(
-		"less",
+		c.pager,
 		"--no-init",
 		"--quit-if-one-screen",
 		"--IGNORE-CASE",
 		"--RAW-CONTROL-CHARS",
 	)
 	cmd.Stdin = strings.NewReader(doc)
-	cmd.Stdout = os.Stdout
+	cmd.Stdout = c.out
 	if err := cmd.Run(); err != nil {
-		log.Fatalln(err)
+		fmt.Fprintf(c.err, "cli: fatal error: %v\n", err)
+		c.quit(failure)
+		return
 	}
-	os.Exit(0)
+
+	c.quit(success)
 }
 
 // errorf formats according to a format specifier, prints to standard
@@ -103,16 +125,23 @@ func show(v string) {
 
 // Run executes the application.
 func Run() {
+	cons := console{
+		err:   os.Stderr,
+		out:   os.Stdout,
+		pager: "less",
+		quit:  os.Exit,
+	}
+
 	if len(os.Args) == 1 {
-		page(help)
+		cons.page(help)
 	}
 
 	switch os.Args[1] {
 	// Generic program information.
 	case "-h", "--help":
-		page(help)
+		cons.page(help)
 	case "-v", "--version":
-		page(version(ver, time.Now()))
+		cons.page(version(ver, time.Now()))
 	// Subcommands.
 	case "capacity":
 		show("capacity")
