@@ -2,6 +2,7 @@
 package cli
 
 import (
+	"bytes"
 	_ "embed"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"text/template"
 	"time"
 
 	"tshaka.co/bat/internal/services"
@@ -36,21 +38,27 @@ https://github.com/tshakalekholoane/bat#disclaimer for details.`
 // permissions to perform an action.
 var errPermissionDenied = syscall.EACCES
 
-//go:embed help.txt
-var help string
+// tag is the version information evaluated at compile time.
+var tag string
 
-// ver is the version information evaluated at compile time.
-var ver string
+var (
+	//go:embed help.txt
+	help string
+	//go:embed version.tmpl
+	version string
+)
 
-// version returns the version information as a string.
-func version(semver string, now time.Time) string {
-	var buf strings.Builder
-	buf.WriteString("bat ")
-	buf.WriteString(semver)
-	buf.WriteString("\nCopyright (c) ")
-	buf.WriteString(strconv.Itoa(now.Year()))
-	buf.WriteString(" Tshaka Eric Lekholoane.")
-	buf.WriteString("\nMIT Licence.")
+// info returns the version information as a string.
+func info(tag string, now time.Time) string {
+	buf := new(bytes.Buffer)
+	tmpl := template.Must(template.New("version").Parse(version))
+	tmpl.Execute(buf, struct {
+		Tag  string
+		Year int
+	}{
+		tag,
+		time.Now().Year(),
+	})
 	return buf.String()
 }
 
@@ -141,7 +149,7 @@ func Run() {
 	case "-h", "--help":
 		cons.page(help)
 	case "-v", "--version":
-		cons.page(version(ver, time.Now()))
+		cons.page(info(tag, time.Now()))
 	// Subcommands.
 	case "capacity":
 		show("capacity")
