@@ -6,17 +6,16 @@ help:
 
 ## audit: format, vet, and test code
 .PHONY: audit 
-audit:
+audit: test
 	@echo "Formatting code."
 	gofumpt -w .
 	@echo "Vetting code."
 	go vet ./...
 	staticcheck ./...
-	@echo "Running tests."
-	go test -race -vet=off ./...
 
-ver = $(shell git describe --always --dirty --tags --long)
-linker_flags = "-s -X 'tshaka.co/bat/internal/cli.ver=${ver}'"
+tag = $(shell git describe --always --dirty --tags --long)
+linker_flags = "-s -X 'tshaka.co/bat/internal/cli.tag=${tag}'"
+
 ## build: build the cmd/bat application
 .PHONY: build
 build:
@@ -28,3 +27,9 @@ build:
 release: build
 	@echo "Packaging bat."
 	zip bat.zip ./bat
+
+## test: runs tests
+.PHONY: test 
+test: 
+	@echo "Running tests."
+	go test -v -race -vet=off -ldflags=${linker_flags} ./...
