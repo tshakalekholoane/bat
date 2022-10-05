@@ -15,7 +15,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: 1.18
+          go-version: ">=1.19.0"
 
       - name: Verify dependencies
         run: go mod verify
@@ -50,4 +50,4 @@ jobs:
           fi
 
       - name: Test
-        run: go test -race -vet=off ./...
+        run: make test
