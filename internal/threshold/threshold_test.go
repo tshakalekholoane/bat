@@ -8,6 +8,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"gotest.tools/v3/assert"
 )
 
 func FuzzSet(f *testing.F) {
@@ -22,32 +24,23 @@ func FuzzSet(f *testing.F) {
 		}
 
 		file, err := os.CreateTemp("", "charge_threshold")
-		if err != nil {
-			t.Errorf("failed to create temporary file")
-		}
+		assert.NilError(t, err)
 		defer os.Remove(file.Name())
 
 		// Reassign charging threshold variable path for testing.
 		threshold = file.Name()
 
-		if err := Set(want); err != nil {
-			t.Fatalf("failed to set charging threshold, %v", err)
-		}
+		err = Set(want)
+		assert.NilError(t, err, "set charging threshold: %v", err)
 
 		b := make([]byte, 3)
 		_, err = file.Read(b)
-		if err != nil {
-			t.Fatal("failed to read threshold value from file")
-		}
+		assert.NilError(t, err, "read threshold value: %v", err)
 
 		got, err := strconv.Atoi(strings.TrimRight(string(b), "\x00"))
-		if err != nil {
-			t.Fatal("failed to convert byte string to int")
-		}
+		assert.NilError(t, err, "convert byte string to int: %v", err)
 
-		if got != want {
-			t.Errorf("got = %d, want = %d", got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
 
@@ -72,13 +65,9 @@ func TestIsRequiredKernel(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("isRequiredKernel(%q)", test.input), func(t *testing.T) {
 			got, err := isRequiredKernel(test.input)
-			if err != nil {
-				t.Fatalf("failed to parse version string, %s", test.input)
-			}
+			assert.NilError(t, err, "parse version string: %s", test.input)
 
-			if got != test.want {
-				t.Errorf("isRequiredKernel(%q) = %t, want = %t", test.input, got, test.want)
-			}
+			assert.Equal(t, got, test.want)
 		})
 	}
 }
@@ -99,18 +88,14 @@ func TestInvalid(t *testing.T) {
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("IsInvalid(%d)", test.input), func(t *testing.T) {
 			got := IsValid(test.input)
-			if got != test.want {
-				t.Errorf("IsInvalid(%d) = %t, want = %t", test.input, got, test.want)
-			}
+			assert.Equal(t, got, test.want)
 		})
 	}
 }
 
 func TestSet(t *testing.T) {
 	f, err := os.CreateTemp("", "charge_threshold")
-	if err != nil {
-		t.Errorf("failed to create temporary file")
-	}
+	assert.NilError(t, err)
 	defer os.Remove(f.Name())
 
 	// Reassign charging threshold variable path for testing.
@@ -121,23 +106,16 @@ func TestSet(t *testing.T) {
 	want := rand.Intn(101) + 1
 
 	t.Run(fmt.Sprintf("Set(%v)", want), func(t *testing.T) {
-		if err := Set(want); err != nil {
-			t.Fatalf("failed to set charging threshold, %v", err)
-		}
+		err := Set(want)
+		assert.NilError(t, err, "set charging threshold: %v", err)
 
 		b := make([]byte, 3)
-		_, err := f.Read(b)
-		if err != nil {
-			t.Fatal("failed to read threshold value from file")
-		}
+		_, err = f.Read(b)
+		assert.NilError(t, err, "read threshold value: %v", err)
 
 		got, err := strconv.Atoi(strings.TrimRight(string(b), "\x00"))
-		if err != nil {
-			t.Fatal("failed to convert byte string to int")
-		}
+		assert.NilError(t, err, "convert byte string to int: %v", err)
 
-		if got != want {
-			t.Errorf("got = %d, want = %d", got, want)
-		}
+		assert.Equal(t, got, want)
 	})
 }
