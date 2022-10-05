@@ -120,7 +120,7 @@ func writeln(a ...any) {
 }
 
 // show prints the value of a /sys/class/power_supply/BAT?/ variable.
-func show(v string) {
+func show(v variable.Variable) {
 	c, err := variable.Val(v)
 	if err != nil {
 		if errors.Is(err, variable.ErrNotFound) {
@@ -128,7 +128,7 @@ func show(v string) {
 		}
 		log.Fatalln(err)
 	}
-	writeln(strings.TrimSpace(string(c)))
+	writeln(c)
 }
 
 // Run executes the application.
@@ -152,7 +152,7 @@ func Run() {
 		cons.page(info(tag, time.Now()))
 	// Subcommands.
 	case "capacity":
-		show("capacity")
+		show(variable.Capacity)
 	case "persist":
 		if err := services.Write(); err != nil {
 			switch {
@@ -178,7 +178,7 @@ func Run() {
 		}
 		writeln("Charging threshold persistence reset.")
 	case "status":
-		show("status")
+		show(variable.Status)
 	case "threshold":
 		switch {
 		case len(os.Args) > 3:
@@ -210,7 +210,7 @@ func Run() {
 			}
 			writeln("Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
 		default:
-			show("charge_control_end_threshold")
+			show(variable.Threshold)
 		}
 	default:
 		errorf(

@@ -12,7 +12,6 @@ import (
 	"os/exec"
 	"regexp"
 	"strconv"
-	"strings"
 	"syscall"
 	"text/template"
 
@@ -129,26 +128,30 @@ func Write() error {
 		return err
 	}
 
-	limit, err := variable.Val("charge_control_end_threshold")
+	limit, err := variable.Val(variable.Threshold)
 	if err != nil {
 		return err
 	}
-	t, err := strconv.Atoi(strings.TrimSpace(string(limit)))
+
+	val, err := strconv.Atoi(limit)
 	if err != nil {
 		return err
 	}
-	if !threshold.IsValid(t) {
-		log.Fatalf("services: invalid threshold value %d\n", t)
+
+	if !threshold.IsValid(val) {
+		log.Fatalf("services: invalid threshold value %d\n", val)
 	}
 
 	tmpl, err := template.New("unit").Parse(unit)
 	if err != nil {
 		return err
 	}
+
+	// Write service files in parallel.
 	errs := make(chan error, len(units))
 	for _, s := range units {
 		go func(s service) {
-			s.Shell, s.Threshold = shell, t
+			s.Shell, s.Threshold = shell, val
 			f, err := os.Create("/etc/systemd/system/bat-" + s.Event + ".service")
 			if err != nil {
 				errs <- err
@@ -175,5 +178,6 @@ func Write() error {
 			return err
 		}
 	}
+
 	return nil
 }
