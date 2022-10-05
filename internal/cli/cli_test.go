@@ -88,7 +88,7 @@ func TestVersion(t *testing.T) {
 			string(bytes.TrimSpace(out)),
 			time.Now().Year(),
 		})
-		
+
 		assert.Assert(t, bytes.Contains(want.Bytes(), got.Bytes()))
 		assert.Equal(t, s.code, success, "exit status = %d, want %d", s.code, success)
 	})
