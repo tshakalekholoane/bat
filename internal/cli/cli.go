@@ -96,124 +96,134 @@ func (c *console) page(doc string) {
 
 // errorf formats according to a format specifier, prints to standard
 // error, and exits with an error code 1.
-func errorf(format string, a ...any) {
-	fmt.Fprintf(os.Stderr, format, a...)
-	os.Exit(1)
+func (c *console) errorf(format string, a ...any) {
+	fmt.Fprintf(c.err, format, a...)
+	c.quit(failure)
 }
 
 // errorln formats using the default format for its operands, appends a
 // new line, writes to standard error, and exits with error code 1.
-func errorln(a ...any) {
-	errorf("%v\n", a...)
+func (c *console) errorln(a ...any) {
+	c.errorf("%v\n", a...)
 }
 
 // writef formats according to a format specifier, prints to standard
 // input.
-func writef(format string, a ...any) {
-	fmt.Fprintf(os.Stdout, format, a...)
+func (c *console) writef(format string, a ...any) {
+	fmt.Fprintf(c.out, format, a...)
 }
 
 // writeln formats using the default format for its operands, appends a
 // new line, and writes to standard input.
-func writeln(a ...any) {
-	writef("%v\n", a...)
+func (c *console) writeln(a ...any) {
+	c.writef("%v\n", a...)
+}
+
+// app represents this application and its dependencies.
+type app struct {
+	console *console
+	read    func(variable.Variable) (string, error)
 }
 
 // show prints the value of a /sys/class/power_supply/BAT?/ variable.
-func show(v variable.Variable) {
-	c, err := variable.Val(v)
+func (a *app) show(v variable.Variable) {
+	val, err := a.read(v)
 	if err != nil {
 		if errors.Is(err, variable.ErrNotFound) {
-			errorln(incompat)
+			a.console.errorln(incompat)
+			return
 		}
 		log.Fatalln(err)
 	}
-	writeln(c)
+	a.console.writeln(val)
 }
 
 // Run executes the application.
 func Run() {
-	cons := console{
-		err:   os.Stderr,
-		out:   os.Stdout,
-		pager: "less",
-		quit:  os.Exit,
+	app := &app{
+		console: &console{
+			err:   os.Stderr,
+			out:   os.Stdout,
+			pager: "less",
+			quit:  os.Exit,
+		},
+		read: variable.Val,
 	}
 
 	if len(os.Args) == 1 {
-		cons.page(help)
+		app.console.page(help)
 	}
 
 	switch os.Args[1] {
 	// Generic program information.
 	case "-h", "--help":
-		cons.page(help)
+		app.console.page(help)
 	case "-v", "--version":
-		cons.page(info(tag, time.Now()))
+		app.console.page(info(tag, time.Now()))
 	// Subcommands.
 	case "capacity":
-		show(variable.Capacity)
+		app.show(variable.Capacity)
 	case "persist":
 		if err := services.Write(); err != nil {
 			switch {
 			case errors.Is(err, services.ErrBashNotFound):
-				errorln("Could not find Bash on your system.")
+				app.console.errorln("Could not find Bash on your system.")
 			case errors.Is(err, services.ErrIncompatSystemd):
-				errorln("Requires systemd version 244-rc1 or later.")
+				app.console.errorln("Requires systemd version 244-rc1 or later.")
 			case errors.Is(err, variable.ErrNotFound):
-				errorln(incompat)
+				app.console.errorln(incompat)
 			case errors.Is(err, errPermissionDenied):
-				errorln(noPermission)
+				app.console.errorln(noPermission)
 			default:
 				log.Fatalln(err)
 			}
 		}
-		writeln("Persistence of the current charging threshold enabled.")
+		app.console.writeln("Persistence of the current charging threshold enabled.")
 	case "reset":
 		if err := services.Delete(); err != nil {
 			if errors.Is(err, errPermissionDenied) {
-				errorln(noPermission)
+				app.console.errorln(noPermission)
 			}
 			log.Fatal(err)
 		}
-		writeln("Charging threshold persistence reset.")
+		app.console.writeln("Charging threshold persistence reset.")
 	case "status":
-		show(variable.Status)
+		app.show(variable.Status)
 	case "threshold":
 		switch {
 		case len(os.Args) > 3:
-			errorln("Expects a single argument.")
+			app.console.errorln("Expects a single argument.")
 		case len(os.Args) == 3:
 			t, err := strconv.Atoi(os.Args[2])
 			if err != nil {
 				if errors.Is(err, strconv.ErrSyntax) {
-					errorln("Argument should be an integer.")
+					app.console.errorln("Argument should be an integer.")
 				}
 				log.Fatal(err)
 			}
 
 			if !threshold.IsValid(t) {
-				errorln("Number should be between 1 and 100.")
+				app.console.errorln("Number should be between 1 and 100.")
 			}
 
 			if err := threshold.Set(t); err != nil {
 				switch {
 				case errors.Is(err, threshold.ErrIncompatKernel):
-					errorln("Requires Linux kernel version 5.4 or later.")
+					app.console.errorln("Requires Linux kernel version 5.4 or later.")
 				case errors.Is(err, variable.ErrNotFound):
-					errorln(incompat)
+					app.console.errorln(incompat)
 				case errors.Is(err, errPermissionDenied):
-					errorln(noPermission)
+					app.console.errorln(noPermission)
 				default:
 					log.Fatal(err)
 				}
 			}
-			writeln("Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
+			app.console.writeln("Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
 		default:
-			show(variable.Threshold)
+			app.show(variable.Threshold)
 		}
 	default:
-		errorf(
+		app.console.errorf(
 			"There is no %s option. Run `bat --help` to see a list of available options.\n",
 			os.Args[1],
 		)
