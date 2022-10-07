@@ -68,30 +68,28 @@ type console struct {
 	err io.Writer
 	// out represents standard output.
 	out io.Writer
-	// pager is the path of pager pager.
-	pager string
 	// quit is the function that sets the exit code.
 	quit func(code int)
 }
 
 // page filters the string doc through the less pager.
-func (c *console) page(doc string) {
+func (a *app) page(doc string) {
 	cmd := exec.Command(
-		c.pager,
+		a.pager,
 		"--no-init",
 		"--quit-if-one-screen",
 		"--IGNORE-CASE",
 		"--RAW-CONTROL-CHARS",
 	)
 	cmd.Stdin = strings.NewReader(doc)
-	cmd.Stdout = c.out
+	cmd.Stdout = a.console.out
 	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(c.err, "cli: fatal error: %v\n", err)
-		c.quit(failure)
+		fmt.Fprintf(a.console.err, "cli: fatal error: %v\n", err)
+		a.console.quit(failure)
 		return
 	}
 
-	c.quit(success)
+	a.console.quit(success)
 }
 
 // errorf formats according to a format specifier, prints to standard
@@ -122,7 +120,11 @@ func (c *console) writeln(a ...any) {
 // app represents this application and its dependencies.
 type app struct {
 	console *console
-	read    func(variable.Variable) (string, error)
+	// pager is the path of pager pager.
+	pager string
+	// read is the function used to read the values of the battery
+	// variable.
+	read func(variable.Variable) (string, error)
 }
 
 // show prints the value of a /sys/class/power_supply/BAT?/ variable.
@@ -142,24 +144,24 @@ func (a *app) show(v variable.Variable) {
 func Run() {
 	app := &app{
 		console: &console{
-			err:   os.Stderr,
-			out:   os.Stdout,
-			pager: "less",
-			quit:  os.Exit,
+			err:  os.Stderr,
+			out:  os.Stdout,
+			quit: os.Exit,
 		},
-		read: variable.Val,
+		pager: "less",
+		read:  variable.Val,
 	}
 
 	if len(os.Args) == 1 {
-		app.console.page(help)
+		app.page(help)
 	}
 
 	switch os.Args[1] {
 	// Generic program information.
 	case "-h", "--help":
-		app.console.page(help)
+		app.page(help)
 	case "-v", "--version":
-		app.console.page(info(tag, time.Now()))
+		app.page(info(tag, time.Now()))
 	// Subcommands.
 	case "capacity":
 		app.show(variable.Capacity)

@@ -104,11 +104,13 @@ func Delete() error {
 			errs <- nil
 		}(s)
 	}
+
 	for range units {
 		if err := <-errs; err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
@@ -147,7 +149,6 @@ func Write() error {
 		return err
 	}
 
-	// Write service files in parallel.
 	errs := make(chan error, len(units))
 	for _, s := range units {
 		go func(s service) {

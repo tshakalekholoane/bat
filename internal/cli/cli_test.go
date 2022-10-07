@@ -22,13 +22,16 @@ func (s *status) set(code int) {
 	s.code = code
 }
 
+func newTestApp(cons *console) *app {
+	return &app{console: cons, pager: "less", read: testVal}
+}
+
 func newTestConsole() (*status, *console) {
 	s := &status{}
 	c := &console{
-		err:   new(bytes.Buffer),
-		out:   new(bytes.Buffer),
-		pager: "less",
-		quit:  s.set,
+		err:  new(bytes.Buffer),
+		out:  new(bytes.Buffer),
+		quit: s.set,
 	}
 	return s, c
 }
@@ -49,9 +52,10 @@ func testVal(v variable.Variable) (string, error) {
 
 func TestHelp(t *testing.T) {
 	stat, cons := newTestConsole()
+	app := newTestApp(cons)
 
 	t.Run("cli/console.page(help) output == help.txt", func(t *testing.T) {
-		cons.page(help)
+		app.page(help)
 
 		got := cons.out.(*bytes.Buffer).String()
 		want := help
@@ -61,7 +65,7 @@ func TestHelp(t *testing.T) {
 	})
 
 	t.Run("cli/console.page(help) output != help.txt", func(t *testing.T) {
-		cons.page(help)
+		app.page(help)
 
 		got := cons.out.(*bytes.Buffer).String()
 		want := help[1:]
@@ -73,9 +77,9 @@ func TestHelp(t *testing.T) {
 	t.Run(`cli/console.page("") = fatal error`, func(t *testing.T) {
 		// One of the errors that can occur with paging is if the less pager
 		// is not in the path.
-		cons.pager = ""
+		app.pager = ""
 
-		cons.page("")
+		app.page("")
 		got := cons.err.(*bytes.Buffer).Bytes()
 		want := []byte("cli: fatal error: ")
 
@@ -86,9 +90,10 @@ func TestHelp(t *testing.T) {
 
 func TestVersion(t *testing.T) {
 	stat, cons := newTestConsole()
+	app := newTestApp(cons)
 
 	t.Run("cli/console.page(ver)", func(t *testing.T) {
-		cons.page(info(tag, time.Now()))
+		app.page(info(tag, time.Now()))
 		got := cons.out.(*bytes.Buffer)
 
 		cmd := exec.Command("git", "describe", "--always", "--dirty", "--tags", "--long")
@@ -111,23 +116,19 @@ func TestVersion(t *testing.T) {
 }
 
 func TestShow(t *testing.T) {
-	const newline = "\n"
 	tests := [...]struct {
 		val  variable.Variable
 		want string
 		code int
 	}{
-		{variable.Capacity, "79" + newline, success},
-		{variable.Status, "Not charging" + newline, success},
-		{variable.Threshold, "80" + newline, success},
-		{0, incompat + newline, failure},
+		{variable.Capacity, "79\n", success},
+		{variable.Status, "Not charging\n", success},
+		{variable.Threshold, "80\n", success},
+		{*new(variable.Variable) /* unrecognised */, incompat + "\n", failure},
 	}
 
 	stat, cons := newTestConsole()
-	app := &app{
-		console: cons,
-		read:    testVal,
-	}
+	app := newTestApp(cons)
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("show(%q) = %q", test.val.String(), test.want), func(t *testing.T) {
