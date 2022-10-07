@@ -33,3 +33,10 @@ release: build
 test: 
 	@echo "Running tests."
 	go test -v -race -vet=off -ldflags=${linker_flags} ./...
+
+## cover: shows application coverage in browser 
+.PHONY: cover 
+cover: 
+	@echo "Running coverage."
+	go test -coverprofile=cover.out -ldflags=${linker_flags} ./...
+	go tool cover -html=cover.out

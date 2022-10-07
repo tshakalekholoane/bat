@@ -54,8 +54,8 @@ func TestHelp(t *testing.T) {
 	stat, cons := newTestConsole()
 	app := newTestApp(cons)
 
-	t.Run("cli/console.page(help) output == help.txt", func(t *testing.T) {
-		app.page(help)
+	t.Run("app.help() output == help.txt", func(t *testing.T) {
+		app.help()
 
 		got := cons.out.(*bytes.Buffer).String()
 		want := help
@@ -64,8 +64,8 @@ func TestHelp(t *testing.T) {
 		assert.Equal(t, stat.code, success, "exit status = %d, want %d", stat.code, success)
 	})
 
-	t.Run("cli/console.page(help) output != help.txt", func(t *testing.T) {
-		app.page(help)
+	t.Run("app.help() output != help.txt", func(t *testing.T) {
+		app.help()
 
 		got := cons.out.(*bytes.Buffer).String()
 		want := help[1:]
@@ -73,27 +73,14 @@ func TestHelp(t *testing.T) {
 		assert.Assert(t, got != want, "cli.page(help) output == help.txt")
 		assert.Equal(t, stat.code, success, "exit status = %d, want %d", stat.code, success)
 	})
-
-	t.Run(`cli/console.page("") = fatal error`, func(t *testing.T) {
-		// One of the errors that can occur with paging is if the less pager
-		// is not in the path.
-		app.pager = ""
-
-		app.page("")
-		got := cons.err.(*bytes.Buffer).Bytes()
-		want := []byte("cli: fatal error: ")
-
-		assert.Assert(t, bytes.HasPrefix(got, want), "cli.page output != prefix cli: fatal error")
-		assert.Equal(t, stat.code, failure, "exit status = %d, want %d", stat.code, failure)
-	})
 }
 
 func TestVersion(t *testing.T) {
 	stat, cons := newTestConsole()
 	app := newTestApp(cons)
 
-	t.Run("cli/console.page(ver)", func(t *testing.T) {
-		app.page(info(tag, time.Now()))
+	t.Run("app.version() output == version.tmpl", func(t *testing.T) {
+		app.version()
 		got := cons.out.(*bytes.Buffer)
 
 		cmd := exec.Command("git", "describe", "--always", "--dirty", "--tags", "--long")
@@ -116,23 +103,22 @@ func TestVersion(t *testing.T) {
 }
 
 func TestShow(t *testing.T) {
-	tests := [...]struct {
-		val  variable.Variable
-		want string
-		code int
-	}{
-		{variable.Capacity, "79\n", success},
-		{variable.Status, "Not charging\n", success},
-		{variable.Threshold, "80\n", success},
-		{*new(variable.Variable) /* unrecognised */, incompat + "\n", failure},
-	}
-
 	stat, cons := newTestConsole()
 	app := newTestApp(cons)
 
+	tests := [...]struct {
+		name string
+		fn   func()
+		want string
+		code int
+	}{
+		{"func (a *app) capacity()", app.capacity, "79\n", success},
+		{"func (a *app) status()", app.status, "Not charging\n", success},
+	}
+
 	for _, test := range tests {
-		t.Run(fmt.Sprintf("show(%q) = %q", test.val.String(), test.want), func(t *testing.T) {
-			app.show(test.val)
+		t.Run(fmt.Sprintf("%s = %q", test.name, test.want), func(t *testing.T) {
+			test.fn()
 
 			assert.Equal(t, stat.code, test.code, "exit status = %d, want %d", stat.code, test.code)
 

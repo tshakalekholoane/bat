@@ -31,12 +31,8 @@ const (
 const (
 	incompat = `This program is most likely not compatible with your system. See
 https://github.com/tshakalekholoane/bat#disclaimer for details.`
-	noPermission = "Permission denied. Try running this command using sudo."
+	noPerm = "Permission denied. Try running this command using sudo."
 )
-
-// errPermissionDenied indicates that the user has insufficient
-// permissions to perform an action.
-var errPermissionDenied = syscall.EACCES
 
 // tag is the version information evaluated at compile time.
 var tag string
@@ -48,20 +44,6 @@ var (
 	version string
 )
 
-// info returns the version information as a string.
-func info(tag string, now time.Time) string {
-	buf := new(bytes.Buffer)
-	tmpl := template.Must(template.New("version").Parse(version))
-	tmpl.Execute(buf, struct {
-		Tag  string
-		Year int
-	}{
-		tag,
-		time.Now().Year(),
-	})
-	return buf.String()
-}
-
 // console represents a text terminal user interface.
 type console struct {
 	// err represents standard error.
@@ -70,26 +52,6 @@ type console struct {
 	out io.Writer
 	// quit is the function that sets the exit code.
 	quit func(code int)
-}
-
-// page filters the string doc through the less pager.
-func (a *app) page(doc string) {
-	cmd := exec.Command(
-		a.pager,
-		"--no-init",
-		"--quit-if-one-screen",
-		"--IGNORE-CASE",
-		"--RAW-CONTROL-CHARS",
-	)
-	cmd.Stdin = strings.NewReader(doc)
-	cmd.Stdout = a.console.out
-	if err := cmd.Run(); err != nil {
-		fmt.Fprintf(a.console.err, "cli: fatal error: %v\n", err)
-		a.console.quit(failure)
-		return
-	}
-
-	a.console.quit(success)
 }
 
 // errorf formats according to a format specifier, prints to standard
@@ -127,6 +89,23 @@ type app struct {
 	read func(variable.Variable) (string, error)
 }
 
+// page filters the string doc through the less pager.
+func (a *app) page(doc string) {
+	cmd := exec.Command(
+		a.pager,
+		"--no-init",
+		"--quit-if-one-screen",
+		"--IGNORE-CASE",
+		"--RAW-CONTROL-CHARS",
+	)
+	cmd.Stdin = strings.NewReader(doc)
+	cmd.Stdout = a.console.out
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
+	}
+	a.console.quit(success)
+}
+
 // show prints the value of a /sys/class/power_supply/BAT?/ variable.
 func (a *app) show(v variable.Variable) {
 	val, err := a.read(v)
@@ -138,6 +117,94 @@ func (a *app) show(v variable.Variable) {
 		log.Fatalln(err)
 	}
 	a.console.writeln(val)
+}
+
+func (a *app) help() {
+	a.page(help)
+}
+
+func (a *app) version() {
+	buf := new(bytes.Buffer)
+	tmpl := template.Must(template.New("version").Parse(version))
+	tmpl.Execute(buf, struct {
+		Tag  string
+		Year int
+	}{
+		tag,
+		time.Now().Year(),
+	})
+	a.page(buf.String())
+}
+
+func (a *app) capacity() {
+	a.show(variable.Capacity)
+}
+
+func (a *app) persist() {
+	if err := services.Write(); err != nil {
+		switch {
+		case errors.Is(err, services.ErrBashNotFound):
+			a.console.errorln("Could not find Bash on your system.")
+		case errors.Is(err, services.ErrIncompatSystemd):
+			a.console.errorln("Requires systemd version 244-rc1 or later.")
+		case errors.Is(err, variable.ErrNotFound):
+			a.console.errorln(incompat)
+		case errors.Is(err, syscall.EACCES):
+			a.console.errorln(noPerm)
+		default:
+			log.Fatalln(err)
+		}
+	}
+	a.console.writeln("Persistence of the current charging threshold enabled.")
+}
+
+func (a *app) reset() {
+	if err := services.Delete(); err != nil {
+		if errors.Is(err, syscall.EACCES) {
+			a.console.errorln(noPerm)
+		}
+		log.Fatal(err)
+	}
+	a.console.writeln("Charging threshold persistence reset.")
+}
+
+func (a *app) status() {
+	a.show(variable.Status)
+}
+
+func (a *app) threshold(args []string) {
+	switch {
+	case len(args) > 3:
+		a.console.errorln("Expects a single argument.")
+	case len(args) == 3:
+		t, err := strconv.Atoi(args[2])
+		if err != nil {
+			if errors.Is(err, strconv.ErrSyntax) {
+				a.console.errorln("Argument should be an integer.")
+			}
+			log.Fatal(err)
+		}
+
+		if !threshold.IsValid(t) {
+			a.console.errorln("Number should be between 1 and 100.")
+		}
+
+		if err := threshold.Set(t); err != nil {
+			switch {
+			case errors.Is(err, threshold.ErrIncompatKernel):
+				a.console.errorln("Requires Linux kernel version 5.4 or later.")
+			case errors.Is(err, variable.ErrNotFound):
+				a.console.errorln(incompat)
+			case errors.Is(err, syscall.EACCES):
+				a.console.errorln(noPerm)
+			default:
+				log.Fatal(err)
+			}
+		}
+		a.console.writeln("Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
+	default:
+		a.show(variable.Threshold)
+	}
 }
 
 // Run executes the application.
@@ -153,81 +220,28 @@ func Run() {
 	}
 
 	if len(os.Args) == 1 {
-		app.page(help)
+		app.help()
 	}
 
 	switch os.Args[1] {
 	// Generic program information.
 	case "-h", "--help":
-		app.page(help)
+		app.help()
 	case "-v", "--version":
-		app.page(info(tag, time.Now()))
+		app.version()
 	// Subcommands.
 	case "capacity":
-		app.show(variable.Capacity)
+		app.capacity()
 	case "persist":
-		if err := services.Write(); err != nil {
-			switch {
-			case errors.Is(err, services.ErrBashNotFound):
-				app.console.errorln("Could not find Bash on your system.")
-			case errors.Is(err, services.ErrIncompatSystemd):
-				app.console.errorln("Requires systemd version 244-rc1 or later.")
-			case errors.Is(err, variable.ErrNotFound):
-				app.console.errorln(incompat)
-			case errors.Is(err, errPermissionDenied):
-				app.console.errorln(noPermission)
-			default:
-				log.Fatalln(err)
-			}
-		}
-		app.console.writeln("Persistence of the current charging threshold enabled.")
+		app.persist()
 	case "reset":
-		if err := services.Delete(); err != nil {
-			if errors.Is(err, errPermissionDenied) {
-				app.console.errorln(noPermission)
-			}
-			log.Fatal(err)
-		}
-		app.console.writeln("Charging threshold persistence reset.")
+		app.reset()
 	case "status":
-		app.show(variable.Status)
+		app.status()
 	case "threshold":
-		switch {
-		case len(os.Args) > 3:
-			app.console.errorln("Expects a single argument.")
-		case len(os.Args) == 3:
-			t, err := strconv.Atoi(os.Args[2])
-			if err != nil {
-				if errors.Is(err, strconv.ErrSyntax) {
-					app.console.errorln("Argument should be an integer.")
-				}
-				log.Fatal(err)
-			}
-
-			if !threshold.IsValid(t) {
-				app.console.errorln("Number should be between 1 and 100.")
-			}
-
-			if err := threshold.Set(t); err != nil {
-				switch {
-				case errors.Is(err, threshold.ErrIncompatKernel):
-					app.console.errorln("Requires Linux kernel version 5.4 or later.")
-				case errors.Is(err, variable.ErrNotFound):
-					app.console.errorln(incompat)
-				case errors.Is(err, errPermissionDenied):
-					app.console.errorln(noPermission)
-				default:
-					log.Fatal(err)
-				}
-			}
-			app.console.writeln("Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
-		default:
-			app.show(variable.Threshold)
-		}
+		app.threshold(os.Args)
 	default:
-		app.console.errorf(
-			"There is no %s option. Run `bat --help` to see a list of available options.\n",
-			os.Args[1],
-		)
+		const noOpt = "There is no %s option. Run `bat --help` to see a list of available options.\n"
+		app.console.errorf(noOpt, os.Args[1])
 	}
 }
