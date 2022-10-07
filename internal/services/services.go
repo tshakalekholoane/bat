@@ -139,7 +139,7 @@ func (s *Service) Write() error {
 		return err
 	}
 
-	limit, err := variable.Val(variable.Threshold)
+	limit, err := variable.Get(variable.Threshold)
 	if err != nil {
 		return err
 	}

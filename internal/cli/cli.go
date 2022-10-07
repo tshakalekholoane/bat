@@ -222,7 +222,7 @@ func Run() {
 			quit: os.Exit,
 		},
 		pager:   "less",
-		read:    variable.Val,
+		read:    variable.Get,
 		service: &services.Service{},
 	}
 

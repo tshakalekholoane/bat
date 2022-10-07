@@ -8,10 +8,10 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-func TestVal(t *testing.T) {
+func TestGetSet(t *testing.T) {
 	tests := [...]struct {
 		variable Variable
-		want     string
+		value    string
 	}{
 		{Capacity, "79"},
 		{Status, "Not charging"},
@@ -26,12 +26,12 @@ func TestVal(t *testing.T) {
 			assert.NilError(t, err)
 			defer os.Remove(f.Name())
 
-			_, err = f.Write([]byte(test.want))
+			err = Set(test.variable, test.value)
 			assert.NilError(t, err)
 
-			got, err := Val(test.variable)
+			got, err := Get(test.variable)
 			assert.NilError(t, err)
-			assert.Equal(t, got, test.want)
+			assert.Equal(t, got, test.value)
 
 			assert.NilError(t, f.Close())
 		})
