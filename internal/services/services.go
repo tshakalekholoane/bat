@@ -19,9 +19,9 @@ import (
 	"tshaka.co/bat/internal/variable"
 )
 
-// service type holds the fields for variables that go into a systemd
-// service.
-type service struct {
+// unit type holds the fields for variables that go into a systemd
+// unit.
+type unit struct {
 	Event, Shell, Target string
 	Threshold            int
 }
@@ -35,12 +35,12 @@ var (
 )
 
 //go:embed unit.tmpl
-var unit string
+var unitTmpl string
 
 // units array contains populated service structs that are used by
 // systemd to support threshold persistence between various suspend or
 // hibernate states.
-var units = [...]service{
+var units = [...]unit{
 	{Event: "boot", Target: "multi-user"},
 	{Event: "hibernation", Target: "hibernate"},
 	{Event: "hybridsleep", Target: "hybrid-sleep"},
@@ -81,12 +81,21 @@ func systemd() (bool, error) {
 	return true, nil
 }
 
+// Servicer is the interface implemented by an object that can write and
+// delete systemd services.
+type Servicer interface {
+	Write() error
+	Delete() error
+}
+
+type Service struct{}
+
 // Delete removes all systemd services created by bat in order to
 // persist the charging threshold between restarts.
-func Delete() error {
+func (s *Service) Delete() error {
 	errs := make(chan error, len(units))
 	for _, s := range units {
-		go func(s service) {
+		go func(s unit) {
 			err := os.Remove("/etc/systemd/system/bat-" + s.Event + ".service")
 			if err != nil && !errors.Is(err, syscall.ENOENT /* no such file */) {
 				errs <- err
@@ -116,7 +125,7 @@ func Delete() error {
 
 // Write creates all the systemd services required to persist
 // the charging threshold between restarts.
-func Write() error {
+func (s *Service) Write() error {
 	ok, err := systemd()
 	if err != nil {
 		return err
@@ -144,14 +153,14 @@ func Write() error {
 		log.Fatalf("services: invalid threshold value %d\n", val)
 	}
 
-	tmpl, err := template.New("unit").Parse(unit)
+	tmpl, err := template.New("unit").Parse(unitTmpl)
 	if err != nil {
 		return err
 	}
 
 	errs := make(chan error, len(units))
 	for _, s := range units {
-		go func(s service) {
+		go func(s unit) {
 			s.Shell, s.Threshold = shell, val
 			f, err := os.Create("/etc/systemd/system/bat-" + s.Event + ".service")
 			if err != nil {

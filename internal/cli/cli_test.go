@@ -4,11 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"syscall"
 	"testing"
 	"text/template"
 	"time"
 
 	"gotest.tools/v3/assert"
+	"tshaka.co/bat/internal/services"
 	"tshaka.co/bat/internal/variable"
 )
 
@@ -22,18 +24,8 @@ func (s *status) set(code int) {
 	s.code = code
 }
 
-func newTestApp(cons *console) *app {
-	return &app{console: cons, pager: "less", read: testVal}
-}
-
-func newTestConsole() (*status, *console) {
-	s := &status{}
-	c := &console{
-		err:  new(bytes.Buffer),
-		out:  new(bytes.Buffer),
-		quit: s.set,
-	}
-	return s, c
+func (s *status) reset() {
+	s.code = 0
 }
 
 // testVal mocks the variable.Val function.
@@ -48,6 +40,66 @@ func testVal(v variable.Variable) (string, error) {
 	default:
 		return "", variable.ErrNotFound
 	}
+}
+
+type serviceErr uint8
+
+const (
+	ok = iota
+	bashNotFoundErr
+	incompatSystemdErr
+	varNotFoundErr
+	eacces
+)
+
+type testService struct {
+	sim serviceErr
+}
+
+// newTestService returns an object that conforms to services.Servicer
+// which will simulate the specified error.
+func newTestService(sim serviceErr) *testService {
+	return &testService{sim: sim}
+}
+
+func (ts *testService) Write() error {
+	switch ts.sim {
+	case bashNotFoundErr:
+		return services.ErrBashNotFound
+	case incompatSystemdErr:
+		return services.ErrIncompatSystemd
+	case varNotFoundErr:
+		return variable.ErrNotFound
+	case eacces:
+		return syscall.EACCES
+	default:
+		return nil
+	}
+}
+
+func (ts *testService) Delete() error {
+	if ts.sim == eacces {
+		return syscall.EACCES
+	}
+	return nil
+}
+
+func newTestApp(cons *console) *app {
+	return &app{
+		console: cons,
+		pager:   "less",
+		read:    testVal,
+	}
+}
+
+func newTestConsole() (*status, *console) {
+	s := &status{}
+	c := &console{
+		err:  new(bytes.Buffer),
+		out:  new(bytes.Buffer),
+		quit: s.set,
+	}
+	return s, c
 }
 
 func TestHelp(t *testing.T) {
@@ -132,6 +184,87 @@ func TestShow(t *testing.T) {
 			got := buf.String()
 			assert.Equal(t, got, test.want)
 
+			buf.Reset()
+		})
+	}
+}
+
+func TestPersist(t *testing.T) {
+	stat, cons := newTestConsole()
+	app := newTestApp(cons)
+
+	tests := [...]struct {
+		sim  serviceErr
+		msg  string
+		code int
+	}{
+		{ok, persistenceEnabled, success},
+		{bashNotFoundErr, bashNotFound, failure},
+		{incompatSystemdErr, incompatibleSystemd, failure},
+		{varNotFoundErr, incompatible, failure},
+		{eacces, permissionDenied, failure},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("app.persist() = %q", test.msg), func(t *testing.T) {
+			app.service = newTestService(test.sim)
+
+			app.persist()
+
+			assert.Equal(t, stat.code, test.code, "exit status = %d, want %d", stat.code, test.code)
+
+			var buf *bytes.Buffer
+			if stat.code == success {
+				buf = app.console.out.(*bytes.Buffer)
+			} else {
+				buf = app.console.err.(*bytes.Buffer)
+			}
+
+			got := buf.String()
+			want := test.msg + "\n"
+
+			assert.Equal(t, got, want)
+
+			stat.reset()
+			buf.Reset()
+		})
+	}
+}
+
+func TestReset(t *testing.T) {
+	stat, cons := newTestConsole()
+	app := newTestApp(cons)
+
+	tests := [...]struct {
+		sim  serviceErr
+		msg  string
+		code int
+	}{
+		{ok, persistenceReset, success},
+		{eacces, permissionDenied, failure},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("app.reset() = %q", test.msg), func(t *testing.T) {
+			app.service = newTestService(test.sim)
+
+			app.reset()
+
+			assert.Equal(t, stat.code, test.code, "exit status = %d, want %d", stat.code, test.code)
+
+			var buf *bytes.Buffer
+			if stat.code == success {
+				buf = app.console.out.(*bytes.Buffer)
+			} else {
+				buf = app.console.err.(*bytes.Buffer)
+			}
+
+			got := buf.String()
+			want := test.msg + "\n"
+
+			assert.Equal(t, got, want)
+
+			stat.reset()
 			buf.Reset()
 		})
 	}

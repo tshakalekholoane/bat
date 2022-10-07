@@ -21,17 +21,19 @@ import (
 	"tshaka.co/bat/internal/variable"
 )
 
-// Unix status codes.
 const (
 	success = iota
 	failure
 )
 
-// Common error messages.
 const (
-	incompat = `This program is most likely not compatible with your system. See
+	bashNotFound = "Could not find Bash on your system."
+	incompatible = `This program is most likely not compatible with your system. See
 https://github.com/tshakalekholoane/bat#disclaimer for details.`
-	noPerm = "Permission denied. Try running this command using sudo."
+	incompatibleSystemd = "Requires systemd version 243-rc1 or later."
+	permissionDenied    = "Permission denied. Try running this command using sudo."
+	persistenceEnabled  = "Persistence of the current charging threshold enabled."
+	persistenceReset    = "Charging threshold persistence reset."
 )
 
 // tag is the version information evaluated at compile time.
@@ -87,6 +89,9 @@ type app struct {
 	// read is the function used to read the values of the battery
 	// variable.
 	read func(variable.Variable) (string, error)
+	// service is used to write and delete systemd services that persist
+	// the charging threshold between restarts.
+	service services.Servicer
 }
 
 // page filters the string doc through the less pager.
@@ -111,7 +116,7 @@ func (a *app) show(v variable.Variable) {
 	val, err := a.read(v)
 	if err != nil {
 		if errors.Is(err, variable.ErrNotFound) {
-			a.console.errorln(incompat)
+			a.console.errorln(incompatible)
 			return
 		}
 		log.Fatalln(err)
@@ -141,31 +146,32 @@ func (a *app) capacity() {
 }
 
 func (a *app) persist() {
-	if err := services.Write(); err != nil {
+	if err := a.service.Write(); err != nil {
 		switch {
 		case errors.Is(err, services.ErrBashNotFound):
-			a.console.errorln("Could not find Bash on your system.")
+			a.console.errorln(bashNotFound)
 		case errors.Is(err, services.ErrIncompatSystemd):
-			a.console.errorln("Requires systemd version 244-rc1 or later.")
+			a.console.errorln(incompatibleSystemd)
 		case errors.Is(err, variable.ErrNotFound):
-			a.console.errorln(incompat)
+			a.console.errorln(incompatible)
 		case errors.Is(err, syscall.EACCES):
-			a.console.errorln(noPerm)
+			a.console.errorln(permissionDenied)
 		default:
 			log.Fatalln(err)
 		}
 	}
-	a.console.writeln("Persistence of the current charging threshold enabled.")
+	a.console.writeln(persistenceEnabled)
 }
 
 func (a *app) reset() {
-	if err := services.Delete(); err != nil {
+	if err := a.service.Delete(); err != nil {
 		if errors.Is(err, syscall.EACCES) {
-			a.console.errorln(noPerm)
+			a.console.errorln(permissionDenied)
+			return
 		}
 		log.Fatal(err)
 	}
-	a.console.writeln("Charging threshold persistence reset.")
+	a.console.writeln(persistenceReset)
 }
 
 func (a *app) status() {
@@ -194,9 +200,9 @@ func (a *app) threshold(args []string) {
 			case errors.Is(err, threshold.ErrIncompatKernel):
 				a.console.errorln("Requires Linux kernel version 5.4 or later.")
 			case errors.Is(err, variable.ErrNotFound):
-				a.console.errorln(incompat)
+				a.console.errorln(incompatible)
 			case errors.Is(err, syscall.EACCES):
-				a.console.errorln(noPerm)
+				a.console.errorln(permissionDenied)
 			default:
 				log.Fatal(err)
 			}
@@ -215,8 +221,9 @@ func Run() {
 			out:  os.Stdout,
 			quit: os.Exit,
 		},
-		pager: "less",
-		read:  variable.Val,
+		pager:   "less",
+		read:    variable.Val,
+		service: &services.Service{},
 	}
 
 	if len(os.Args) == 1 {
