@@ -35,7 +35,7 @@ var (
 )
 
 //go:embed unit.tmpl
-var unitTmpl string
+var tmpl string
 
 // units array contains populated service structs that are used by
 // systemd to support threshold persistence between various suspend or
@@ -153,7 +153,7 @@ func (s *Service) Write() error {
 		log.Fatalf("services: invalid threshold value %d\n", val)
 	}
 
-	tmpl, err := template.New("unit").Parse(unitTmpl)
+	t, err := template.New("unit").Parse(tmpl)
 	if err != nil {
 		return err
 	}
@@ -169,7 +169,7 @@ func (s *Service) Write() error {
 			}
 			defer f.Close()
 
-			if err := tmpl.Execute(f, s); err != nil {
+			if err := t.Execute(f, s); err != nil {
 				errs <- err
 				return
 			}

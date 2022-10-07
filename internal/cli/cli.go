@@ -27,13 +27,19 @@ const (
 )
 
 const (
+	argNotInt    = "Argument should be an integer."
 	bashNotFound = "Could not find Bash on your system."
 	incompatible = `This program is most likely not compatible with your system. See
 https://github.com/tshakalekholoane/bat#disclaimer for details.`
+	incompatibleKernel  = "Requires Linux kernel version 5.4 or later."
 	incompatibleSystemd = "Requires systemd version 243-rc1 or later."
+	noOpt               = "There is no %s option. Run `bat --help` to see a list of available options.\n"
+	outOfRange          = "Number should be between 1 and 100."
 	permissionDenied    = "Permission denied. Try running this command using sudo."
 	persistenceEnabled  = "Persistence of the current charging threshold enabled."
 	persistenceReset    = "Charging threshold persistence reset."
+	singleArg           = "Expects a single argument."
+	thresholdSet        = "Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts."
 )
 
 // tag is the version information evaluated at compile time.
@@ -86,9 +92,11 @@ type app struct {
 	console *console
 	// pager is the path of pager pager.
 	pager string
-	// read is the function used to read the values of the battery
-	// variable.
-	read func(variable.Variable) (string, error)
+	// get is the function used to read the value of the battery variable.
+	get func(variable.Variable) (string, error)
+	// set is the function used to write the battery charging threshold
+	// value.
+	set func(int) error
 	// service is used to write and delete systemd services that persist
 	// the charging threshold between restarts.
 	service services.Servicer
@@ -113,7 +121,7 @@ func (a *app) page(doc string) {
 
 // show prints the value of a /sys/class/power_supply/BAT?/ variable.
 func (a *app) show(v variable.Variable) {
-	val, err := a.read(v)
+	val, err := a.get(v)
 	if err != nil {
 		if errors.Is(err, variable.ErrNotFound) {
 			a.console.errorln(incompatible)
@@ -181,24 +189,26 @@ func (a *app) status() {
 func (a *app) threshold(args []string) {
 	switch {
 	case len(args) > 3:
-		a.console.errorln("Expects a single argument.")
+		a.console.errorln(singleArg)
 	case len(args) == 3:
-		t, err := strconv.Atoi(args[2])
+		lvl, err := strconv.Atoi(args[2])
 		if err != nil {
 			if errors.Is(err, strconv.ErrSyntax) {
-				a.console.errorln("Argument should be an integer.")
+				a.console.errorln(argNotInt)
+				return
 			}
 			log.Fatal(err)
 		}
 
-		if !threshold.IsValid(t) {
-			a.console.errorln("Number should be between 1 and 100.")
+		if !threshold.IsValid(lvl) {
+			a.console.errorln(outOfRange)
+			return
 		}
 
-		if err := threshold.Set(t); err != nil {
+		if err := a.set(lvl); err != nil {
 			switch {
 			case errors.Is(err, threshold.ErrIncompatKernel):
-				a.console.errorln("Requires Linux kernel version 5.4 or later.")
+				a.console.errorln(incompatibleKernel)
 			case errors.Is(err, variable.ErrNotFound):
 				a.console.errorln(incompatible)
 			case errors.Is(err, syscall.EACCES):
@@ -207,7 +217,7 @@ func (a *app) threshold(args []string) {
 				log.Fatal(err)
 			}
 		}
-		a.console.writeln("Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
+		a.console.writeln(thresholdSet)
 	default:
 		a.show(variable.Threshold)
 	}
@@ -222,7 +232,8 @@ func Run() {
 			quit: os.Exit,
 		},
 		pager:   "less",
-		read:    variable.Get,
+		get:     variable.Get,
+		set:     threshold.Set,
 		service: &services.Service{},
 	}
 
@@ -248,7 +259,6 @@ func Run() {
 	case "threshold":
 		app.threshold(os.Args)
 	default:
-		const noOpt = "There is no %s option. Run `bat --help` to see a list of available options.\n"
 		app.console.errorf(noOpt, os.Args[1])
 	}
 }

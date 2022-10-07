@@ -11,8 +11,23 @@ import (
 
 	"gotest.tools/v3/assert"
 	"tshaka.co/bat/internal/services"
+	"tshaka.co/bat/internal/threshold"
 	"tshaka.co/bat/internal/variable"
 )
+
+// testGet mocks the variable.Get function.
+func testGet(v variable.Variable) (string, error) {
+	switch v {
+	case variable.Capacity:
+		return "79", nil
+	case variable.Status:
+		return "Not charging", nil
+	case variable.Threshold:
+		return "80", nil
+	default:
+		return "", variable.ErrNotFound
+	}
+}
 
 // status spies on the exit function to ensure the correct exit code is
 // returned.
@@ -28,44 +43,24 @@ func (s *status) reset() {
 	s.code = 0
 }
 
-// testVal mocks the variable.Val function.
-func testVal(v variable.Variable) (string, error) {
-	switch v {
-	case variable.Capacity:
-		return "79", nil
-	case variable.Status:
-		return "Not charging", nil
-	case variable.Threshold:
-		return "80", nil
-	default:
-		return "", variable.ErrNotFound
-	}
-}
-
-type serviceErr uint8
+type simulatedError uint8
 
 const (
-	ok = iota
+	ok simulatedError = iota
 	bashNotFoundErr
+	eacces
+	incompatKernelErr
 	incompatSystemdErr
 	varNotFoundErr
-	eacces
 )
 
-type testService struct {
-	sim serviceErr
-}
-
-// newTestService returns an object that conforms to services.Servicer
-// which will simulate the specified error.
-func newTestService(sim serviceErr) *testService {
-	return &testService{sim: sim}
-}
-
-func (ts *testService) Write() error {
-	switch ts.sim {
+// simulatedError is used to mock functions that return an error.
+func simulateError(err simulatedError) error {
+	switch err {
 	case bashNotFoundErr:
 		return services.ErrBashNotFound
+	case incompatKernelErr:
+		return threshold.ErrIncompatKernel
 	case incompatSystemdErr:
 		return services.ErrIncompatSystemd
 	case varNotFoundErr:
@@ -77,18 +72,36 @@ func (ts *testService) Write() error {
 	}
 }
 
+// testSet represents a struct that has a function that with the same
+// signature as the one used to set the charging threshold. The sim
+// argument is used to instruct which error to simulate.
+type testSet struct {
+	sim simulatedError
+}
+
+func (ts *testSet) set(lvl int) error {
+	return simulateError(ts.sim)
+}
+
+// testService represents a struct with methods that conforms to
+// services.Servicer which will also simulate the specified error.
+type testService struct {
+	sim simulatedError
+}
+
+func (ts *testService) Write() error {
+	return simulateError(ts.sim)
+}
+
 func (ts *testService) Delete() error {
-	if ts.sim == eacces {
-		return syscall.EACCES
-	}
-	return nil
+	return simulateError(ts.sim)
 }
 
 func newTestApp(cons *console) *app {
 	return &app{
 		console: cons,
 		pager:   "less",
-		read:    testVal,
+		get:     testGet,
 	}
 }
 
@@ -106,7 +119,7 @@ func TestHelp(t *testing.T) {
 	stat, cons := newTestConsole()
 	app := newTestApp(cons)
 
-	t.Run("app.help() output == help.txt", func(t *testing.T) {
+	t.Run("app.help() == help.txt", func(t *testing.T) {
 		app.help()
 
 		got := cons.out.(*bytes.Buffer).String()
@@ -116,7 +129,7 @@ func TestHelp(t *testing.T) {
 		assert.Equal(t, stat.code, success, "exit status = %d, want %d", stat.code, success)
 	})
 
-	t.Run("app.help() output != help.txt", func(t *testing.T) {
+	t.Run("app.help() != help.txt", func(t *testing.T) {
 		app.help()
 
 		got := cons.out.(*bytes.Buffer).String()
@@ -131,7 +144,7 @@ func TestVersion(t *testing.T) {
 	stat, cons := newTestConsole()
 	app := newTestApp(cons)
 
-	t.Run("app.version() output == version.tmpl", func(t *testing.T) {
+	t.Run("app.version() == version.tmpl", func(t *testing.T) {
 		app.version()
 		got := cons.out.(*bytes.Buffer)
 
@@ -164,8 +177,8 @@ func TestShow(t *testing.T) {
 		want string
 		code int
 	}{
-		{"func (a *app) capacity()", app.capacity, "79\n", success},
-		{"func (a *app) status()", app.status, "Not charging\n", success},
+		{"app.capacity()", app.capacity, "79\n", success},
+		{"app.status()", app.status, "Not charging\n", success},
 	}
 
 	for _, test := range tests {
@@ -194,7 +207,7 @@ func TestPersist(t *testing.T) {
 	app := newTestApp(cons)
 
 	tests := [...]struct {
-		sim  serviceErr
+		sim  simulatedError
 		msg  string
 		code int
 	}{
@@ -207,7 +220,7 @@ func TestPersist(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("app.persist() = %q", test.msg), func(t *testing.T) {
-			app.service = newTestService(test.sim)
+			app.service = &testService{sim: test.sim}
 
 			app.persist()
 
@@ -236,7 +249,7 @@ func TestReset(t *testing.T) {
 	app := newTestApp(cons)
 
 	tests := [...]struct {
-		sim  serviceErr
+		sim  simulatedError
 		msg  string
 		code int
 	}{
@@ -246,7 +259,7 @@ func TestReset(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("app.reset() = %q", test.msg), func(t *testing.T) {
-			app.service = newTestService(test.sim)
+			app.service = &testService{sim: test.sim}
 
 			app.reset()
 
@@ -261,6 +274,52 @@ func TestReset(t *testing.T) {
 
 			got := buf.String()
 			want := test.msg + "\n"
+
+			assert.Equal(t, got, want)
+
+			stat.reset()
+			buf.Reset()
+		})
+	}
+}
+
+func TestThreshold(t *testing.T) {
+	stat, cons := newTestConsole()
+	app := newTestApp(cons)
+
+	tests := [...]struct {
+		args []string
+		code int
+		sim  simulatedError
+		want string
+	}{
+		{[]string{"bat", "threshold", "80"}, success, ok, thresholdSet},
+		{[]string{"bat", "threshold", "80", "extraneous_arg"}, failure, ok, singleArg},
+		{[]string{"bat", "threshold", "80.0"}, failure, ok, argNotInt},
+		{[]string{"bat", "threshold", "101"}, failure, ok, outOfRange},
+		{[]string{"bat", "threshold", "80"}, failure, incompatKernelErr, incompatibleKernel},
+		{[]string{"bat", "threshold", "80"}, failure, varNotFoundErr, incompatible},
+		{[]string{"bat", "threshold", "80"}, failure, eacces, permissionDenied},
+	}
+
+	for _, test := range tests {
+		t.Run(fmt.Sprintf("app.threshold() = %q", test.want), func(t *testing.T) {
+			ts := testSet{sim: test.sim}
+			app.set = ts.set
+
+			app.threshold(test.args)
+
+			assert.Equal(t, stat.code, test.code, "exit status = %d, want %d", stat.code, test.code)
+
+			var buf *bytes.Buffer
+			if stat.code == success {
+				buf = app.console.out.(*bytes.Buffer)
+			} else {
+				buf = app.console.err.(*bytes.Buffer)
+			}
+
+			got := buf.String()
+			want := test.want + "\n"
 
 			assert.Equal(t, got, want)
 
