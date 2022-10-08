@@ -19,13 +19,6 @@ import (
 	"tshaka.co/bat/internal/variable"
 )
 
-// unit type holds the fields for variables that go into a systemd
-// unit.
-type unit struct {
-	Event, Shell, Target string
-	Threshold            int
-}
-
 var (
 	// ErrBashNotFound indicates the absence of the Bash shell in the
 	// user's $PATH.
@@ -36,6 +29,13 @@ var (
 
 //go:embed unit.tmpl
 var tmpl string
+
+// unit type holds the fields for variables that go into a systemd
+// unit.
+type unit struct {
+	Event, Shell, Target string
+	Threshold            int
+}
 
 // units array contains populated service structs that are used by
 // systemd to support threshold persistence between various suspend or
@@ -88,30 +88,39 @@ type Servicer interface {
 	Delete() error
 }
 
-type Service struct{}
+var dir = "/etc/systemd/system/"
+
+type Service struct {
+	dir string
+}
+
+func NewService() *Service {
+	return &Service{dir: dir}
+}
 
 // Delete removes all systemd services created by bat in order to
 // persist the charging threshold between restarts.
 func (s *Service) Delete() error {
 	errs := make(chan error, len(units))
-	for _, s := range units {
-		go func(s unit) {
-			err := os.Remove("/etc/systemd/system/bat-" + s.Event + ".service")
+	for _, u := range units {
+		go func(u unit) {
+			event := "bat-" + u.Event + ".service"
+			err := os.Remove(s.dir + event)
 			if err != nil && !errors.Is(err, syscall.ENOENT /* no such file */) {
 				errs <- err
 				return
 			}
 
-			cmd := exec.Command("systemctl", "disable", "bat-"+s.Event+".service")
+			cmd := exec.Command("systemctl", "disable", event)
 			var buf bytes.Buffer
 			cmd.Stderr = &buf
 			if err := cmd.Run(); err != nil &&
-				!bytes.Contains(bytes.TrimSpace(buf.Bytes()), []byte("bat-"+s.Event+".service does not exist.")) {
+				!bytes.Contains(bytes.TrimSpace(buf.Bytes()), []byte(event+" does not exist.")) {
 				errs <- err
 				return
 			}
 			errs <- nil
-		}(s)
+		}(u)
 	}
 
 	for range units {
@@ -159,28 +168,29 @@ func (s *Service) Write() error {
 	}
 
 	errs := make(chan error, len(units))
-	for _, s := range units {
-		go func(s unit) {
-			s.Shell, s.Threshold = shell, val
-			f, err := os.Create("/etc/systemd/system/bat-" + s.Event + ".service")
+	for _, u := range units {
+		go func(u unit) {
+			event := "bat-" + u.Event + ".service"
+			u.Shell, u.Threshold = shell, val
+			f, err := os.Create(s.dir + event)
 			if err != nil {
 				errs <- err
 				return
 			}
 			defer f.Close()
 
-			if err := t.Execute(f, s); err != nil {
+			if err := t.Execute(f, u); err != nil {
 				errs <- err
 				return
 			}
 
-			cmd := exec.Command("systemctl", "enable", "bat-"+s.Event+".service")
+			cmd := exec.Command("systemctl", "enable", event)
 			if err := cmd.Run(); err != nil {
 				errs <- err
 				return
 			}
 			errs <- nil
-		}(s)
+		}(u)
 	}
 
 	for range units {

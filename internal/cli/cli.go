@@ -234,7 +234,7 @@ func Run() {
 		pager:   "less",
 		get:     variable.Get,
 		set:     threshold.Set,
-		service: &services.Service{},
+		service: services.NewService(),
 	}
 
 	if len(os.Args) == 1 {
