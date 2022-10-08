@@ -19,13 +19,6 @@ import (
 	"tshaka.co/bat/internal/variable"
 )
 
-// service type holds the fields for variables that go into a systemd
-// service.
-type service struct {
-	Event, Shell, Target string
-	Threshold            int
-}
-
 var (
 	// ErrBashNotFound indicates the absence of the Bash shell in the
 	// user's $PATH.
@@ -35,12 +28,19 @@ var (
 )
 
 //go:embed unit.tmpl
-var unit string
+var tmpl string
+
+// unit type holds the fields for variables that go into a systemd
+// unit.
+type unit struct {
+	Event, Shell, Target string
+	Threshold            int
+}
 
 // units array contains populated service structs that are used by
 // systemd to support threshold persistence between various suspend or
 // hibernate states.
-var units = [...]service{
+var units = [...]unit{
 	{Event: "boot", Target: "multi-user"},
 	{Event: "hibernation", Target: "hibernate"},
 	{Event: "hybridsleep", Target: "hybrid-sleep"},
@@ -81,40 +81,60 @@ func systemd() (bool, error) {
 	return true, nil
 }
 
+// Servicer is the interface implemented by an object that can write and
+// delete systemd services.
+type Servicer interface {
+	Write() error
+	Delete() error
+}
+
+var dir = "/etc/systemd/system/"
+
+type Service struct {
+	dir string
+}
+
+func NewService() *Service {
+	return &Service{dir: dir}
+}
+
 // Delete removes all systemd services created by bat in order to
 // persist the charging threshold between restarts.
-func Delete() error {
+func (s *Service) Delete() error {
 	errs := make(chan error, len(units))
-	for _, s := range units {
-		go func(s service) {
-			err := os.Remove("/etc/systemd/system/bat-" + s.Event + ".service")
+	for _, u := range units {
+		go func(u unit) {
+			event := "bat-" + u.Event + ".service"
+			err := os.Remove(s.dir + event)
 			if err != nil && !errors.Is(err, syscall.ENOENT /* no such file */) {
 				errs <- err
 				return
 			}
 
-			cmd := exec.Command("systemctl", "disable", "bat-"+s.Event+".service")
+			cmd := exec.Command("systemctl", "disable", event)
 			var buf bytes.Buffer
 			cmd.Stderr = &buf
 			if err := cmd.Run(); err != nil &&
-				!bytes.Contains(bytes.TrimSpace(buf.Bytes()), []byte("bat-"+s.Event+".service does not exist.")) {
+				!bytes.Contains(bytes.TrimSpace(buf.Bytes()), []byte(event+" does not exist.")) {
 				errs <- err
 				return
 			}
 			errs <- nil
-		}(s)
+		}(u)
 	}
+
 	for range units {
 		if err := <-errs; err != nil {
 			return err
 		}
 	}
+
 	return nil
 }
 
 // Write creates all the systemd services required to persist
 // the charging threshold between restarts.
-func Write() error {
+func (s *Service) Write() error {
 	ok, err := systemd()
 	if err != nil {
 		return err
@@ -128,7 +148,7 @@ func Write() error {
 		return err
 	}
 
-	limit, err := variable.Val(variable.Threshold)
+	limit, err := variable.Get(variable.Threshold)
 	if err != nil {
 		return err
 	}
@@ -142,35 +162,35 @@ func Write() error {
 		log.Fatalf("services: invalid threshold value %d\n", val)
 	}
 
-	tmpl, err := template.New("unit").Parse(unit)
+	t, err := template.New("unit").Parse(tmpl)
 	if err != nil {
 		return err
 	}
 
-	// Write service files in parallel.
 	errs := make(chan error, len(units))
-	for _, s := range units {
-		go func(s service) {
-			s.Shell, s.Threshold = shell, val
-			f, err := os.Create("/etc/systemd/system/bat-" + s.Event + ".service")
+	for _, u := range units {
+		go func(u unit) {
+			event := "bat-" + u.Event + ".service"
+			u.Shell, u.Threshold = shell, val
+			f, err := os.Create(s.dir + event)
 			if err != nil {
 				errs <- err
 				return
 			}
 			defer f.Close()
 
-			if err := tmpl.Execute(f, s); err != nil {
+			if err := t.Execute(f, u); err != nil {
 				errs <- err
 				return
 			}
 
-			cmd := exec.Command("systemctl", "enable", "bat-"+s.Event+".service")
+			cmd := exec.Command("systemctl", "enable", event)
 			if err := cmd.Run(); err != nil {
 				errs <- err
 				return
 			}
 			errs <- nil
-		}(s)
+		}(u)
 	}
 
 	for range units {

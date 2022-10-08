@@ -40,7 +40,8 @@ body:
       label: Version
       description: Which version of bat are you running?
       options:
-        - "0.10 (Latest)"
+        - "0.10.1 (Latest)"
+        - "0.10"
         - "0.9.1"
         - "0.9"
         - "0.8.4"

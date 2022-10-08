@@ -5,18 +5,13 @@ package threshold
 import (
 	"errors"
 	"math"
-	"os"
 	"os/exec"
-	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"tshaka.co/bat/internal/variable"
 )
-
-// threshold represents the path of the charging threshold threshold.
-var threshold = "/sys/class/power_supply/BAT?/charge_control_end_threshold"
 
 // ErrIncompatKernel indicates an incompatible Linux kernel version.
 var ErrIncompatKernel = errors.New("threshold: incompatible kernel version")
@@ -65,7 +60,7 @@ func IsValid(v int) bool {
 }
 
 // Set overrides the charging threshold with t.
-func Set(t int) error {
+func Set(lvl int) error {
 	ver, err := kernel()
 	if err != nil {
 		return err
@@ -78,20 +73,5 @@ func Set(t int) error {
 		return ErrIncompatKernel
 	}
 
-	matches, err := filepath.Glob(threshold)
-	if err != nil {
-		return err
-	}
-	if len(matches) == 0 {
-		return variable.ErrNotFound
-	}
-
-	f, err := os.Create(matches[0])
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	f.WriteString(strconv.FormatInt(int64(t), 10))
-	return nil
+	return variable.Set(variable.Threshold, strconv.Itoa(lvl))
 }

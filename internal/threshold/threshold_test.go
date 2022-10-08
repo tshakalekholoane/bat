@@ -2,47 +2,10 @@ package threshold
 
 import (
 	"fmt"
-	"math/rand"
-	"os"
-	"strconv"
-	"strings"
 	"testing"
-	"time"
 
 	"gotest.tools/v3/assert"
 )
-
-func FuzzSet(f *testing.F) {
-	tests := [...]int{-1, 0, 1, 99, 100, 101}
-	for _, test := range tests {
-		f.Add(test)
-	}
-
-	f.Fuzz(func(t *testing.T, want int) {
-		if !IsValid(want) {
-			return
-		}
-
-		file, err := os.CreateTemp("", "charge_threshold")
-		assert.NilError(t, err)
-		defer os.Remove(file.Name())
-
-		// Reassign charging threshold variable path for testing.
-		threshold = file.Name()
-
-		err = Set(want)
-		assert.NilError(t, err, "set charging threshold: %v", err)
-
-		b := make([]byte, 3)
-		_, err = file.Read(b)
-		assert.NilError(t, err, "read threshold value: %v", err)
-
-		got, err := strconv.Atoi(strings.TrimRight(string(b), "\x00"))
-		assert.NilError(t, err, "convert byte string to int: %v", err)
-
-		assert.Equal(t, got, want)
-	})
-}
 
 func TestIsRequiredKernel(t *testing.T) {
 	tests := [...]struct {
@@ -91,31 +54,4 @@ func TestInvalid(t *testing.T) {
 			assert.Equal(t, got, test.want)
 		})
 	}
-}
-
-func TestSet(t *testing.T) {
-	f, err := os.CreateTemp("", "charge_threshold")
-	assert.NilError(t, err)
-	defer os.Remove(f.Name())
-
-	// Reassign charging threshold variable path for testing.
-	threshold = f.Name()
-
-	// Generate random threshold value.
-	rand.Seed(time.Now().UnixNano())
-	want := rand.Intn(101) + 1
-
-	t.Run(fmt.Sprintf("Set(%v)", want), func(t *testing.T) {
-		err := Set(want)
-		assert.NilError(t, err, "set charging threshold: %v", err)
-
-		b := make([]byte, 3)
-		_, err = f.Read(b)
-		assert.NilError(t, err, "read threshold value: %v", err)
-
-		got, err := strconv.Atoi(strings.TrimRight(string(b), "\x00"))
-		assert.NilError(t, err, "convert byte string to int: %v", err)
-
-		assert.Equal(t, got, want)
-	})
 }
