@@ -74,7 +74,7 @@ func Set(v Variable, val string) error {
 
 	f, err := os.Create(p)
 	if err != nil {
-		return nil
+		return err
 	}
 	defer f.Close()
 
