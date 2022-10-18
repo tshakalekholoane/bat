@@ -16,9 +16,11 @@ import (
 	"text/template"
 	"time"
 
-	"tshaka.co/bat/internal/services"
-	"tshaka.co/bat/internal/threshold"
-	"tshaka.co/bat/internal/variable"
+	"tshaka.co/bat/x/internal/services"
+	"tshaka.co/bat/x/internal/threshold"
+
+	// TODO: Update to public package.
+	"tshaka.co/bat/x/internal/variable"
 )
 
 const (

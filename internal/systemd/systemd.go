@@ -1,7 +1,6 @@
-// Package services implements the functions that are required to create
-// and delete the systemd services that persist the charging threshold
-// between restarts for this application.
-package services
+// Package systemd implements functions that relate to managing the
+// systemd services that set the charging threshold between restarts. 
+package systemd 
 
 import (
 	"bytes"
@@ -15,14 +14,17 @@ import (
 	"syscall"
 	"text/template"
 
-	"tshaka.co/bat/internal/threshold"
-	"tshaka.co/bat/internal/variable"
+	"tshaka.co/x/bat/internal/threshold"
+
+	// TODO: Update to public package. 
+	"tshaka.co/x/bat/internal/variable"
 )
 
 var (
 	// ErrBashNotFound indicates the absence of the Bash shell in the
-	// user's $PATH.
-	ErrBashNotFound = errors.New("services: Bash not found")
+	// user's $PATH. This is the shell program that is used to execute
+	// commands to set the threshold after restarts. 
+	ErrBashNotFound = errors.New("systemd: Bash not found")
 	// ErrIncompatSystemd indicates an incompatible version of systemd.
 	ErrIncompatSystemd = errors.New("services: incompatible systemd version")
 )
