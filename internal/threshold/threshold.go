@@ -10,7 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"tshaka.co/bat/internal/variable"
+	// TODO: Update to public package.
+	"tshaka.co/x/bat/internal/variable"
 )
 
 // ErrIncompatKernel indicates an incompatible Linux kernel version.

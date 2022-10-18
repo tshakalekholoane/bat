@@ -10,9 +10,11 @@ import (
 	"time"
 
 	"gotest.tools/v3/assert"
-	"tshaka.co/bat/internal/services"
-	"tshaka.co/bat/internal/threshold"
-	"tshaka.co/bat/internal/variable"
+	"tshaka.co/x/bat/internal/services"
+	"tshaka.co/x/bat/internal/threshold"
+
+	// TODO: Update to public package.
+	"tshaka.co/x/bat/internal/variable"
 )
 
 // testGet mocks the variable.Get function.

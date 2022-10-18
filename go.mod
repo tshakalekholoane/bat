@@ -1,4 +1,4 @@
-module tshaka.co/bat
+module tshaka.co/x/bat
 
 go 1.19
 
