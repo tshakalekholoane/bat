@@ -1,6 +1,6 @@
-// Package variable contains helpers related to reading the contents of a
-// /sys/class/power_supply/BAT?/ variable.
-package variable
+// Package power contains functions to read and write
+// /sys/class/power_supply/ device variables.
+package power
 
 import (
 	"bytes"
@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 )
 
+// Variable represents a /sys/class/power_supply/ device variable.
 type Variable uint8
 
 const (
@@ -30,11 +31,14 @@ func (v Variable) String() string {
 	}
 }
 
+// dir is the location of the (symlink) of the device in the sysfs
+// virtual file system. A glob pattern is used to try to make compatible
+// with multiple device manufacturers.
+var dir = "/sys/class/power_supply/BAT?/"
+
 // ErrNotFound indicates a virtual file that does not exist in the path
 // provided.
 var ErrNotFound = errors.New("variable: virtual file not found")
-
-var dir = "/sys/class/power_supply/BAT?/"
 
 func find(v Variable) (string, error) {
 	matches, err := filepath.Glob(filepath.Join(dir, v.String()))
