@@ -34,7 +34,7 @@ func (v Variable) String() string {
 // dir is the location of the (symlink) of the device in the sysfs
 // virtual file system. A glob pattern is used to try to make compatible
 // with multiple device manufacturers.
-var dir = "/sys/class/power_supply/BAT?/"
+const dir = "/sys/class/power_supply/BAT?/"
 
 // ErrNotFound indicates a virtual file that does not exist in the path
 // provided.

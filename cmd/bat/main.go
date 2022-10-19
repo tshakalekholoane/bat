@@ -3,6 +3,4 @@ package main
 
 import "tshaka.co/x/bat/internal/cli"
 
-func main() {
-	cli.Run()
-}
+func main() { cli.Run() }
