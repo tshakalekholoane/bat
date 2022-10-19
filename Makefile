@@ -14,19 +14,13 @@ audit: test
 	staticcheck ./...
 
 tag = $(shell git describe --always --dirty --tags --long)
-linker_flags = "-s -X 'tshaka.co/bat/internal/cli.tag=${tag}'"
+linker_flags = "-s -X 'tshaka.co/x/bat/internal/cli.tag=${tag}'"
 
 ## build: build the cmd/bat application
 .PHONY: build
 build:
 	@echo "Building bat."
 	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} ./cmd/bat/
-
-## release: package bat binary into a zip file
-.PHONY: release
-release: build
-	@echo "Packaging bat."
-	zip bat.zip ./bat
 
 ## test: runs tests
 .PHONY: test 
