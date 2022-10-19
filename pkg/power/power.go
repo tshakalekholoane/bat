@@ -38,7 +38,7 @@ var dir = "/sys/class/power_supply/BAT?/"
 
 // ErrNotFound indicates a virtual file that does not exist in the path
 // provided.
-var ErrNotFound = errors.New("variable: virtual file not found")
+var ErrNotFound = errors.New("power: virtual file not found")
 
 func find(v Variable) (string, error) {
 	matches, err := filepath.Glob(filepath.Join(dir, v.String()))
