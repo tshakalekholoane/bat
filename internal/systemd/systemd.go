@@ -23,7 +23,7 @@ var (
 	// commands to set the threshold after restarts.
 	ErrBashNotFound = errors.New("systemd: Bash not found")
 	// ErrIncompatSystemd indicates an incompatible version of systemd.
-	ErrIncompatSystemd = errors.New("services: incompatible systemd version")
+	ErrIncompatSystemd = errors.New("systemd: incompatible systemd version")
 )
 
 // unit is a template of a systemd unit file that encodes information
@@ -97,9 +97,7 @@ func configs() ([]config, error) {
 	}, nil
 }
 
-type Systemd struct {
-	dir string
-}
+type Systemd struct{ dir string }
 
 func New() *Systemd { return &Systemd{dir: "/etc/systemd/system/"} }
 
