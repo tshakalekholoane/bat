@@ -158,17 +158,17 @@ func (a *app) capacity() { a.show(power.Capacity) }
 
 func (a *app) persist() {
 	if err := a.systemder.Write(); err != nil {
-		switch err {
-		case systemd.ErrBashNotFound:
+		switch {
+		case errors.Is(err, systemd.ErrBashNotFound):
 			a.errorln(msgBashNotFound)
 			return
-		case systemd.ErrIncompatSystemd:
+		case errors.Is(err, systemd.ErrIncompatSystemd):
 			a.errorln(msgIncompatibleSystemd)
 			return
-		case power.ErrNotFound:
+		case errors.Is(err, power.ErrNotFound):
 			a.errorln(msgIncompatible)
 			return
-		case syscall.EACCES:
+		case errors.Is(err, syscall.EACCES):
 			a.errorln(msgPermissionDenied)
 			return
 		default:
@@ -269,11 +269,11 @@ func (a *app) threshold(args []string) {
 		}
 
 		if err := a.set(power.Threshold, strings.TrimSpace(val)); err != nil {
-			switch err {
-			case power.ErrNotFound:
+			switch {
+			case errors.Is(err, power.ErrNotFound):
 				a.errorln(msgIncompatible)
 				return
-			case syscall.EACCES:
+			case errors.Is(err, syscall.EACCES):
 				a.errorln(msgPermissionDenied)
 				return
 			default:
@@ -294,9 +294,10 @@ func Run() {
 			out:  os.Stdout,
 			quit: os.Exit,
 		},
-		pager: "less",
-		get:   power.Get,
-		set:   power.Set,
+		pager:     "less",
+		get:       power.Get,
+		set:       power.Set,
+		systemder: systemd.New(),
 	}
 
 	if len(os.Args) == 1 {

@@ -3,6 +3,7 @@ package cli
 import (
 	"bytes"
 	"fmt"
+	"io/fs"
 	"os/exec"
 	"syscall"
 	"testing"
@@ -217,7 +218,7 @@ func TestPersist(t *testing.T) {
 		{systemd.ErrBashNotFound, msgBashNotFound, failure},
 		{systemd.ErrIncompatSystemd, msgIncompatibleSystemd, failure},
 		{power.ErrNotFound, msgIncompatible, failure},
-		{syscall.EACCES, msgPermissionDenied, failure},
+		{&fs.PathError{Err: syscall.EACCES}, msgPermissionDenied, failure},
 	}
 
 	for _, test := range tests {
@@ -261,7 +262,7 @@ func TestReset(t *testing.T) {
 		code int
 	}{
 		{nil, msgPersistenceReset, success},
-		{syscall.EACCES, msgPermissionDenied, failure},
+		{&fs.PathError{Err: syscall.EACCES}, msgPermissionDenied, failure},
 	}
 
 	for _, test := range tests {
@@ -310,7 +311,7 @@ func TestThreshold(t *testing.T) {
 		{[]string{"bat", "threshold", "80.0"}, failure, nil, msgArgNotInt},
 		{[]string{"bat", "threshold", "101"}, failure, nil, msgOutOfRangeThresholdVal},
 		{[]string{"bat", "threshold", "80"}, failure, power.ErrNotFound, msgIncompatible},
-		{[]string{"bat", "threshold", "80"}, failure, syscall.EACCES, msgPermissionDenied},
+		{[]string{"bat", "threshold", "80"}, failure, &fs.PathError{Err: syscall.EACCES}, msgPermissionDenied},
 	}
 
 	for _, test := range tests {
