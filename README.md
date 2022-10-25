@@ -1,5 +1,7 @@
 # `bat`
 
+[![Go Reference](https://pkg.go.dev/badge/tshaka.co/x/bat.svg)](https://pkg.go.dev/tshaka.co/x/bat)
+
 ```                                     bat(1)
 NAME
     bat -- battery management utility for Linux laptops 
