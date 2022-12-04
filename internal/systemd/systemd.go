@@ -45,25 +45,27 @@ func bash() (string, error) {
 	return path, nil
 }
 
-// systemd returns true if the systemd version of the system in question
-// is later than 244 and returns false otherwise. (systemd v244-rc1 is
-// the earliest version to allow restarts for oneshot services).
-func systemd() (bool, error) {
+// compatSystemd returns nil if the systemd version of the system in
+// question is later than 244 and returns false otherwise.
+// (systemd v244-rc1 is the earliest version to allow restarts for
+// oneshot services).
+func compatSystemd() error {
 	out, err := exec.Command("systemctl", "--version").Output()
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	re := regexp.MustCompile(`\d+`)
 	ver, err := strconv.Atoi(string(re.Find(out)))
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	if ver < 244 {
-		return false, nil
+		return ErrIncompatSystemd
 	}
-	return true, nil
+
+	return nil
 }
 
 // config represents a systemd unit file's configuration for a service.
@@ -101,23 +103,15 @@ type Systemd struct{ dir string }
 
 func New() *Systemd { return &Systemd{dir: "/etc/systemd/system/"} }
 
-func (s *Systemd) remove(configs []config) error {
-	errs := make(chan error, len(configs))
-	for _, c := range configs {
-		go func(c config) {
-			name := "bat-" + c.Event + ".service"
-
-			err := os.Remove(s.dir + name)
-			if err != nil && !errors.Is(err, syscall.ENOENT /* no such file */) {
-				errs <- err
-				return
-			}
-
-			errs <- nil
-		}(c)
+// sync runs the given function on the configurations in parallel and
+// returns an error if any one call resulted in a error.
+func sync(cfgs []config, fn func(cfg config, in chan<- error)) error {
+	errs := make(chan error, len(cfgs))
+	for _, cfg := range cfgs {
+		go fn(cfg, errs)
 	}
 
-	for range configs {
+	for range cfgs {
 		if err := <-errs; err != nil {
 			return err
 		}
@@ -126,13 +120,20 @@ func (s *Systemd) remove(configs []config) error {
 	return nil
 }
 
-func (s *Systemd) write(configs []config) error {
-	ok, err := systemd()
-	if err != nil {
+func (s *Systemd) remove(cfgs []config) error {
+	return sync(cfgs, func(cfg config, in chan<- error) {
+		name := s.dir + "bat-" + cfg.Event + ".service"
+		if err := os.Remove(name); err != nil && errors.Is(err, syscall.ENOENT) {
+			in <- err
+			return
+		}
+		in <- nil
+	})
+}
+
+func (s *Systemd) write(cfgs []config) error {
+	if err := compatSystemd(); err != nil {
 		return err
-	}
-	if !ok {
-		return ErrIncompatSystemd
 	}
 
 	tmpl, err := template.New("unit").Parse(unit)
@@ -140,100 +141,64 @@ func (s *Systemd) write(configs []config) error {
 		return err
 	}
 
-	errs := make(chan error, len(configs))
-	for _, c := range configs {
-		go func(c config) {
-			name := "bat-" + c.Event + ".service"
-
-			service, err := os.Create(s.dir + name)
-			if err != nil && !errors.Is(err, syscall.ENOENT /* no such file */) {
-				errs <- err
-				return
-			}
-			defer service.Close()
-
-			if err := tmpl.Execute(service, c); err != nil {
-				errs <- err
-				return
-			}
-
-			errs <- nil
-		}(c)
-	}
-
-	for range configs {
-		if err := <-errs; err != nil {
-			return err
+	return sync(cfgs, func(cfg config, in chan<- error) {
+		name := s.dir + "bat-" + cfg.Event + ".service"
+		sf, err := os.Create(name)
+		if err != nil && !errors.Is(err, syscall.ENOENT) {
+			in <- err
+			return
 		}
-	}
+		defer sf.Close()
 
-	return nil
+		if err := tmpl.Execute(sf, cfg); err != nil {
+			in <- err
+			return
+		}
+		in <- nil
+	})
 }
 
-func (s *Systemd) disable(configs []config) error {
-	errs := make(chan error, len(configs))
-	for _, c := range configs {
-		go func(c config) {
-			name := "bat-" + c.Event + ".service"
+func (s *Systemd) disable(cfgs []config) error {
+	return sync(cfgs, func(cfg config, in chan<- error) {
+		name := "bat-" + cfg.Event + ".service"
+		buf := new(bytes.Buffer)
 
-			cmd := exec.Command("systemctl", "disable", name)
-			buf := new(bytes.Buffer)
-			cmd.Stderr = buf
-
-			if err := cmd.Run(); err != nil && !bytes.Contains(buf.Bytes(), []byte(name+" does not exist.")) {
-				errs <- err
-				return
-			}
-			errs <- nil
-		}(c)
-	}
-
-	for range configs {
-		if err := <-errs; err != nil {
-			return err
+		cmd := exec.Command("systemctl", "disable", name)
+		cmd.Stderr = buf
+		if err := cmd.Run(); err != nil &&
+			!bytes.Contains(buf.Bytes(), []byte(name+" does not exist.")) {
+			in <- err
+			return
 		}
-	}
-
-	return nil
+		in <- nil
+	})
 }
 
-func (s *Systemd) enable(configs []config) error {
-	errs := make(chan error, len(configs))
-	for _, c := range configs {
-		go func(c config) {
-			name := "bat-" + c.Event + ".service"
-
-			cmd := exec.Command("systemctl", "enable", name)
-			if err := cmd.Run(); err != nil {
-				errs <- err
-				return
-			}
-			errs <- nil
-		}(c)
-	}
-
-	for range configs {
-		if err := <-errs; err != nil {
-			return err
+func (s *Systemd) enable(cfgs []config) error {
+	return sync(cfgs, func(cfg config, in chan<- error) {
+		name := "bat-" + cfg.Event + ".service"
+		cmd := exec.Command("systemctl", "enable", name)
+		if err := cmd.Run(); err != nil {
+			in <- err
+			return
 		}
-	}
-
-	return nil
+		in <- nil
+	})
 }
 
 // Reset removes and disables all systemd services created by the
 // application.
 func (s *Systemd) Reset() error {
-	configs, err := configs()
+	cfgs, err := configs()
 	if err != nil {
 		return err
 	}
 
-	if err := s.remove(configs); err != nil {
+	if err := s.remove(cfgs); err != nil {
 		return err
 	}
 
-	if err := s.disable(configs); err != nil {
+	if err := s.disable(cfgs); err != nil {
 		return err
 	}
 
@@ -243,16 +208,16 @@ func (s *Systemd) Reset() error {
 // Write creates all the systemd services required to persist the
 // charging threshold between restarts.
 func (s *Systemd) Write() error {
-	configs, err := configs()
+	cfgs, err := configs()
 	if err != nil {
 		return err
 	}
 
-	if err := s.write(configs); err != nil {
+	if err := s.write(cfgs); err != nil {
 		return err
 	}
 
-	if err := s.enable(configs); err != nil {
+	if err := s.enable(cfgs); err != nil {
 		return err
 	}
 
