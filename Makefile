@@ -2,7 +2,10 @@
 .PHONY: help
 help:
 	@echo "Usage:"
-	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' | sed -e 's/^/ /'
+	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -s ':' -t | sed -e 's/^/ /'
+
+git_tag = $(shell git describe --always --dirty --tags --long)
+ldflags = "-s -X 'tshaka.co/x/bat/internal/cli.tag=${git_tag}'"
 
 ## audit: format, vet, and test code
 .PHONY: audit 
@@ -13,24 +16,27 @@ audit: test
 	go vet ./...
 	staticcheck ./...
 
-tag = $(shell git describe --always --dirty --tags --long)
-linker_flags = "-s -X 'tshaka.co/x/bat/internal/cli.tag=${tag}'"
-
 ## build: build the cmd/bat application
 .PHONY: build
 build:
 	@echo "Building bat."
-	GOOS=linux GOARCH=amd64 go build -ldflags=${linker_flags} ./cmd/bat/
+	GOOS=linux GOARCH=amd64 go build -ldflags=${ldflags} ./cmd/bat/
+
+## clean: delete build artefacts
+.PHONY: clean
+clean:
+	@echo "Deleting build artefacts."
+	-rm bat
 
 ## test: runs tests
 .PHONY: test 
 test: 
 	@echo "Running tests."
-	go test -v -race -vet=off -ldflags=${linker_flags} ./...
+	go test -v -race -vet=off -ldflags=${ldflags} ./...
 
 ## cover: shows application coverage in browser 
-.PHONY: cover 
+.PHONY: cover
 cover: 
 	@echo "Running coverage."
-	go test -coverprofile=cover.out -ldflags=${linker_flags} ./...
+	go test -coverprofile=cover.out -ldflags=${ldflags} ./...
 	go tool cover -html=cover.out
