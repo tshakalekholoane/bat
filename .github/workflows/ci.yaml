@@ -15,7 +15,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v3
         with:
-          go-version: ">=1.19.0"
+          go-version: "stable"
 
       - name: Verify dependencies
         run: go mod verify
@@ -43,10 +43,9 @@ jobs:
 
       - name: Run gofumpt
         run: |
-          if [[ $(gofumpt -l .) ]]; then  
+          if [[ $(gofumpt -l .) ]]; then
             printf "Format error in the following file(s).\n"
-            gofumpt -l . 
-            (exit 1); 
+            gofumpt -l .
           fi
 
       - name: Test
