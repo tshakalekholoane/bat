@@ -1,11 +1,11 @@
+git_tag = $(shell git describe --always --dirty --tags --long)
+ldflags = "-s -X 'tshaka.co/x/bat/internal/cli.tag=${git_tag}'"
+
 ## help: print this help message
 .PHONY: help
 help:
 	@echo "Usage:"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -s ':' -t | sed -e 's/^/ /'
-
-git_tag = $(shell git describe --always --dirty --tags --long)
-ldflags = "-s -X 'tshaka.co/x/bat/internal/cli.tag=${git_tag}'"
 
 ## audit: format, vet, and test code
 .PHONY: audit 
