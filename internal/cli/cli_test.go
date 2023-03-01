@@ -11,8 +11,8 @@ import (
 	"time"
 
 	"gotest.tools/v3/assert"
-	"tshaka.co/x/bat/internal/systemd"
-	"tshaka.co/x/bat/pkg/power"
+	"tshaka.dev/x/bat/internal/systemd"
+	"tshaka.dev/x/bat/pkg/power"
 )
 
 // status spies on the exit function to ensure the correct exit code is

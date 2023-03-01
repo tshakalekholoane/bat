@@ -14,7 +14,7 @@ import (
 	"syscall"
 	"text/template"
 
-	"tshaka.co/x/bat/pkg/power"
+	"tshaka.dev/x/bat/pkg/power"
 )
 
 var (

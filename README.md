@@ -1,6 +1,6 @@
 # `bat`
 
-[![Go Reference](https://pkg.go.dev/badge/tshaka.co/x/bat.svg)](https://pkg.go.dev/tshaka.co/x/bat)
+[![Go Reference](https://pkg.go.dev/badge/tshaka.dev/x/bat.svg)](https://pkg.go.dev/tshaka.dev/x/bat)
 ![Continuous Integration](https://github.com/tshakalekholoane/bat/actions/workflows/ci.yaml/badge.svg)
 
 ```                                     bat(1)
@@ -60,7 +60,7 @@ After downloading the binary, give it permission to execute on your system by ru
 chmod +x $HOME/Downloads/bat
 ```
 
-Alternatively, the application can be build from source by running the following command in the root directory of this repository. This requires a working version of [Make](https://www.gnu.org/software/make/) and [Go](https://golang.org/) on your system.
+Alternatively, the application can be build from source by running the following command in the root directory of this repository. This requires a working version of [Make](https://www.gnu.org/software/make/) and [Go](https://golang.org/).
 
 ```shell
 make build

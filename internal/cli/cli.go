@@ -18,8 +18,8 @@ import (
 	"text/template"
 	"time"
 
-	"tshaka.co/x/bat/internal/systemd"
-	"tshaka.co/x/bat/pkg/power"
+	"tshaka.dev/x/bat/internal/systemd"
+	"tshaka.dev/x/bat/pkg/power"
 )
 
 const (

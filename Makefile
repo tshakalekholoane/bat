@@ -1,5 +1,5 @@
 git_tag = $(shell git describe --always --dirty --tags --long)
-ldflags = "-s -X 'tshaka.co/x/bat/internal/cli.tag=${git_tag}'"
+ldflags = "-s -X 'tshaka.dev/x/bat/internal/cli.tag=${git_tag}'"
 
 ## help: print this help message
 .PHONY: help
