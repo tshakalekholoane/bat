@@ -57,32 +57,36 @@ Precompiled binaries (Linux x86-64) are available from the [GitHub releases page
 After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
 
 ```shell
-$ chmod +x $HOME/Downloads/bat
+chmod +x $HOME/Downloads/bat
 ```
 
 Alternatively, the application can be build from source by running the following command in the root directory of this repository. This requires a working version of [Make](https://www.gnu.org/software/make/) and [Go](https://golang.org/) on your system.
 
 ```shell
-$ make build
+make build
 ```
 
-**Tip**: Place the resulting binary in a directory that is in the `$PATH` environment variable such as `/usr/local/bin/`. This will allow the user to execute the program from anywhere on their system.
+**Tip**: Create a symbolic link of the resulting binary in a directory that is in the `$PATH` environment variable such as `/usr/local/bin/`. This will allow any user to execute the program from anywhere on the system.
 
-**Another tip**: Rename the binary to something else if another program with the same name already exists on your system i.e. [bat](https://github.com/sharkdp/bat).
+```shell
+ln -s $HOME/Download/bat /usr/local/bin/bat
+```
+
+You can also rename the binary to something else if another program with the same name already exists i.e. [bat](https://github.com/sharkdp/bat).
 
 ## Examples
 
 ```shell
 # Print the current battery charging threshold.
-$ bat threshold
+bat threshold
 
 # Set a new charging threshold, say 80% (requires superuser 
 # permissions).
-$ sudo bat threshold 80
+sudo bat threshold 80
 
 # Persist the current charging threshold setting between restarts 
 # (requires superuser permissions).
-$ sudo bat persist
+sudo bat persist
 ```
 
 ## Requirements
