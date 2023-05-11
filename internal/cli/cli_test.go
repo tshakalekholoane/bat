@@ -7,7 +7,6 @@ import (
 	"os/exec"
 	"syscall"
 	"testing"
-	"text/template"
 	"time"
 
 	"gotest.tools/v3/assert"
@@ -149,14 +148,7 @@ func TestVersion(t *testing.T) {
 		assert.NilError(t, err)
 
 		want := new(bytes.Buffer)
-		tmpl := template.Must(template.New("version").Parse(version))
-		tmpl.Execute(want, struct {
-			Tag  string
-			Year int
-		}{
-			string(bytes.TrimSpace(out)),
-			time.Now().Year(),
-		})
+		fmt.Fprintf(want, version, string(bytes.TrimSpace(out)), time.Now().Year())
 
 		assert.Assert(t, bytes.Contains(want.Bytes(), got.Bytes()))
 		assert.Equal(t, status.code, success, "exit status = %d, want %d", status.code, success)

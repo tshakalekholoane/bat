@@ -13,7 +13,6 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
-	"text/template"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -51,9 +50,9 @@ var (
 	version string
 )
 
-// resetwriter is the interface that groups the Reset and Write methods
+// resetWriter is the interface that groups the Reset and Write methods
 // used to write and remove systemd services.
-type resetwriter interface {
+type resetWriter interface {
 	Reset() error
 	Write() error
 }
@@ -80,7 +79,7 @@ type app struct {
 	set func(power.Variable, string) error
 	// systemder is used to write and delete systemd services that persist
 	// the charging threshold between restarts.
-	systemder resetwriter
+	systemder resetWriter
 }
 
 // errorf formats according to a format specifier, prints to standard
@@ -139,17 +138,8 @@ func (a *app) help() { a.page(help) }
 
 func (a *app) version() {
 	buf := new(bytes.Buffer)
-	buf.Grow(96 /* max buffer len when branch is dirty is ≈ 84 */)
-
-	tmpl := template.Must(template.New("version").Parse(version))
-	tmpl.Execute(buf, struct {
-		Tag  string
-		Year int
-	}{
-		tag,
-		time.Now().Year(),
-	})
-
+	buf.Grow(96 /* maximum buffer length when branch is dirty is ≈ 84 */)
+	fmt.Fprintf(buf, version, tag, time.Now().Year())
 	a.page(buf.String())
 }
 
@@ -157,6 +147,7 @@ func (a *app) capacity() { a.show(power.Capacity) }
 
 func (a *app) persist() {
 	if err := a.systemder.Write(); err != nil {
+		// XXX: Can't switch over wrapped errors.
 		switch {
 		case errors.Is(err, systemd.ErrBashNotFound):
 			a.errorln(msgBashNotFound)
@@ -214,7 +205,6 @@ func requiredKernel(ver string) (bool, error) {
 	if err != nil {
 		return false, err
 	}
-
 	if maj > 5 /* 🤷 */ || (maj == 5 && min >= 4) {
 		return true, nil
 	}
@@ -247,6 +237,7 @@ func (a *app) threshold(args []string) {
 			log.Fatal(err)
 			return
 		}
+
 		ok, err := requiredKernel(ver)
 		if err != nil {
 			log.Fatal(err)
