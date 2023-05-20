@@ -3,7 +3,7 @@ NAME
     bat -- battery management utility for Linux laptops 
 
 SYNOPSIS
-    bat [-hv]
+    bat [-h]
         [--help] [--version]
         <command> [<arg>]
 
@@ -11,7 +11,7 @@ OPTIONS
     -h, --help      
         Print this help document.
 
-    -v, --version
+    --version
         Display version information and exit.
 
 COMMANDS
@@ -39,7 +39,7 @@ EXAMPLES
 
         $ bat threshold
     
-    - Set a charging threshold that will stop charging at 80%. This requires
+    - Set a charging threshold that will stop charging at 80%%. This requires
       superuser permissions.
 
         $ sudo bat threshold 80
@@ -55,4 +55,4 @@ SUPPORT
 REFERENCE
     https://wiki.archlinux.org/title/Laptop/ASUS#Battery_charge_threshold
 
-                                20 OCTOBER 2022
+                                %s

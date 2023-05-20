@@ -7,8 +7,7 @@
 NAME
     bat -- battery management utility for Linux laptops 
 
-SYNOPSIS
-    bat [-hv]
+    bat [-h]
         [--help] [--version]
         <command> [<arg>]
 
@@ -16,7 +15,7 @@ OPTIONS
     -h, --help      
         Print this help document.
 
-    -v, --version
+    --version
         Display version information and exit.
 
 COMMANDS
