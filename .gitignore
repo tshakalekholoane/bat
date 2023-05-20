@@ -1,5 +1,6 @@
 bat
 !bat/
+bin/
 *.zip
 
 # Development
