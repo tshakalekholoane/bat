@@ -5,7 +5,6 @@ import (
 	"bytes"
 	_ "embed"
 	"errors"
-	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -49,16 +48,12 @@ func usage() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Fprintf(flag.CommandLine.Output(), help, t.Format("02 January 2006"))
+	fmt.Fprintf(os.Stdout, help, t.Format("02 January 2006"))
 }
 
 func main() {
-	ver := flag.Bool("version", false, "")
-	flag.Usage = usage
-	flag.Parse()
-
-	if *ver {
-		fmt.Fprintf(os.Stdout, version, tag, time.Now().Year())
+	if len(os.Args) == 1 {
+		usage()
 		os.Exit(0)
 	}
 
@@ -81,9 +76,15 @@ func main() {
 		return string(data)
 	}
 
-	switch subcommand := flag.Arg(0); subcommand {
+	switch option := os.Args[1]; option {
+	case "-h", "--help":
+		usage()
+		os.Exit(0)
+	case "-v", "--version":
+		fmt.Fprintf(os.Stdout, version, tag, time.Now().Year())
+		os.Exit(0)
 	case "capacity", "status":
-		fmt.Fprint(os.Stdout, read(subcommand))
+		fmt.Fprint(os.Stdout, read(option))
 	case "persist":
 		output, err := exec.Command("systemctl", "--version").CombinedOutput()
 		if err != nil {
@@ -122,11 +123,11 @@ func main() {
 		}
 		fmt.Fprintln(os.Stdout, "Persistence of the current charging threshold enabled.")
 	case "threshold":
-		if flag.NArg() < 2 {
+		if len(os.Args) < 3 {
 			fmt.Fprint(os.Stdout, read(threshold))
 		} else {
-			s := flag.Arg(1)
-			i, err := strconv.Atoi(s)
+			t := os.Args[2]
+			v, err := strconv.Atoi(t)
 			if err != nil {
 				if errors.Is(err, strconv.ErrSyntax) {
 					fmt.Fprintln(os.Stderr, "Argument should be an integer.")
@@ -135,7 +136,7 @@ func main() {
 				log.Fatal(err)
 			}
 
-			if i < 1 || i > 100 {
+			if v < 1 || v > 100 {
 				fmt.Fprintln(os.Stderr, "Threshold value should be between 1 and 100.")
 				os.Exit(1)
 			}
@@ -157,7 +158,7 @@ func main() {
 				os.Exit(1)
 			}
 
-			if err := os.WriteFile(filepath.Join(first, threshold), []byte(s), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(first, threshold), []byte(t), 0o644); err != nil {
 				if errors.Is(err, syscall.EACCES) {
 					fmt.Fprintln(os.Stderr, "Permission denied. Try running this command using sudo.")
 					os.Exit(1)
@@ -188,7 +189,7 @@ func main() {
 		}
 		fmt.Fprintln(os.Stdout, "Charging threshold persistence reset.")
 	default:
-		fmt.Fprintf(os.Stderr, "There is no %s option. Run `bat --help` to see a list of available options.\n", subcommand)
+		fmt.Fprintf(os.Stderr, "There is no %s option. Run `bat --help` to see a list of available options.\n", option)
 		os.Exit(1)
 	}
 }

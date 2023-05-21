@@ -15,7 +15,7 @@ OPTIONS
     -h, --help      
         Print this help document.
 
-    --version
+    -v, --version
         Display version information and exit.
 
 COMMANDS
