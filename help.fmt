@@ -3,7 +3,7 @@ NAME
     bat -- battery management utility for Linux laptops 
 
 SYNOPSIS
-    bat [-h]
+    bat [-hv]
         [--help] [--version]
         <command> [<arg>]
 
