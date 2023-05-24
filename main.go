@@ -79,10 +79,8 @@ func main() {
 	switch option := os.Args[1]; option {
 	case "-h", "--help":
 		usage()
-		os.Exit(0)
 	case "-v", "--version":
 		fmt.Fprintf(os.Stdout, version, tag, time.Now().Year())
-		os.Exit(0)
 	case "capacity", "status":
 		fmt.Fprint(os.Stdout, read(option))
 	case "persist":
