@@ -10,6 +10,7 @@ import (
 )
 
 func execute(t *testing.T, s string) string {
+	t.Helper()
 	parts := strings.Split(s, " ")
 	out, err := exec.Command(parts[0], parts[1:]...).CombinedOutput()
 	assert.NilError(t, err)
