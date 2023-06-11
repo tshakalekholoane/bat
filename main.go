@@ -54,7 +54,7 @@ func usage() {
 func main() {
 	if len(os.Args) == 1 {
 		usage()
-		os.Exit(0)
+		return
 	}
 
 	batteries, err := filepath.Glob(device)
