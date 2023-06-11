@@ -68,7 +68,7 @@ make build
 **Tip**: Create a symbolic link of the resulting binary in a directory that is in the `$PATH` environment variable such as `/usr/local/bin/`. This will allow any user to execute the program from anywhere on the system.
 
 ```shell
-ln -s $HOME/Download/bat /usr/local/bin/bat
+ln -s $HOME/Downloads/bat /usr/local/bin/bat
 ```
 
 You can also rename the binary to something else if another program with the same name already exists i.e. [bat](https://github.com/sharkdp/bat).
