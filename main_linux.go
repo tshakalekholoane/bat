@@ -68,7 +68,7 @@ func main() {
 	}
 
 	first := batteries[0]
-	read := func(v string) string {
+	mustRead := func(v string) string {
 		data, err := os.ReadFile(filepath.Join(first, v))
 		if err != nil {
 			log.Fatal(err)
@@ -82,7 +82,7 @@ func main() {
 	case "-v", "--version":
 		fmt.Fprintf(os.Stdout, version, tag, time.Now().Year())
 	case "capacity", "status":
-		fmt.Fprint(os.Stdout, read(option))
+		fmt.Fprint(os.Stdout, mustRead(option))
 	case "persist":
 		output, err := exec.Command("systemctl", "--version").CombinedOutput()
 		if err != nil {
@@ -101,7 +101,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		current, err := strconv.Atoi(strings.TrimSpace(read(threshold)))
+		current, err := strconv.Atoi(strings.TrimSpace(mustRead(threshold)))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -122,7 +122,7 @@ func main() {
 		fmt.Fprintln(os.Stdout, "Persistence of the current charging threshold enabled.")
 	case "threshold":
 		if len(os.Args) < 3 {
-			fmt.Fprint(os.Stdout, read(threshold))
+			fmt.Fprint(os.Stdout, mustRead(threshold))
 		} else {
 			t := os.Args[2]
 			v, err := strconv.Atoi(t)
