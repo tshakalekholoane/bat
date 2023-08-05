@@ -22,6 +22,9 @@ COMMANDS
     capacity
         Print the current battery level.
 
+    health
+        Print the battery health status.
+
     persist   
         Persist the current threshold between restarts.
 

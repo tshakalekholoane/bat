@@ -83,6 +83,17 @@ func main() {
 		fmt.Fprintf(os.Stdout, version, tag, time.Now().Year())
 	case "capacity", "status":
 		fmt.Fprint(os.Stdout, mustRead(option))
+	case "health":
+		var v, w int
+		_, err := fmt.Sscanf(mustRead("energy_full"), "%d\n", &v)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = fmt.Sscanf(mustRead("energy_full_design"), "%d\n", &w)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Fprintln(os.Stdout, v*100/w)
 	case "persist":
 		output, err := exec.Command("systemctl", "--version").CombinedOutput()
 		if err != nil {
