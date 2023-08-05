@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"io/fs"
 	"log"
 	"os"
 	"os/exec"
@@ -68,28 +69,54 @@ func main() {
 	}
 
 	first := batteries[0]
-	mustRead := func(v string) string {
-		data, err := os.ReadFile(filepath.Join(first, v))
-		if err != nil {
-			log.Fatal(err)
-		}
-		return string(data)
-	}
-
 	switch option := os.Args[1]; option {
 	case "-h", "--help":
 		usage()
 	case "-v", "--version":
 		fmt.Fprintf(os.Stdout, version, tag, time.Now().Year())
 	case "capacity", "status":
-		fmt.Fprint(os.Stdout, mustRead(option))
-	case "health":
-		var v, w int
-		_, err := fmt.Sscanf(mustRead("energy_full"), "%d\n", &v)
+		contents, err := os.ReadFile(filepath.Join(first, option))
 		if err != nil {
 			log.Fatal(err)
 		}
-		_, err = fmt.Sscanf(mustRead("energy_full_design"), "%d\n", &w)
+		fmt.Fprint(os.Stdout, string(contents))
+	case "health":
+		// Some devices use charge_* and others energy_* so probe both.
+		var enoent bool
+		a, err := os.ReadFile(filepath.Join(first, "charge_full"))
+		if err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				log.Fatal(err)
+			}
+			enoent = true
+		}
+		b, err := os.ReadFile(filepath.Join(first, "charge_full_design"))
+		if err != nil {
+			if !errors.Is(err, fs.ErrNotExist) {
+				log.Fatal(err)
+			}
+			enoent = true
+		}
+		if enoent {
+			a, err = os.ReadFile(filepath.Join(first, "energy_full"))
+			if err != nil {
+				if !errors.Is(err, fs.ErrNotExist) {
+					log.Fatal(err)
+				}
+			}
+			b, err = os.ReadFile(filepath.Join(first, "energy_full_design"))
+			if err != nil {
+				if !errors.Is(err, fs.ErrNotExist) {
+					log.Fatal(err)
+				}
+			}
+		}
+		var v, w int
+		_, err = fmt.Sscanf(string(a), "%d\n", &v)
+		if err != nil {
+			log.Fatal(err)
+		}
+		_, err = fmt.Sscanf(string(b), "%d\n", &w)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -112,7 +139,12 @@ func main() {
 			os.Exit(1)
 		}
 
-		current, err := strconv.Atoi(strings.TrimSpace(mustRead(threshold)))
+		contents, err := os.ReadFile(filepath.Join(first, threshold))
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		current, err := strconv.Atoi(strings.TrimSpace(string(contents)))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -133,7 +165,11 @@ func main() {
 		fmt.Fprintln(os.Stdout, "Persistence of the current charging threshold enabled.")
 	case "threshold":
 		if len(os.Args) < 3 {
-			fmt.Fprint(os.Stdout, mustRead(threshold))
+			contents, err := os.ReadFile(filepath.Join(first, threshold))
+			if err != nil {
+				log.Fatal(err)
+			}
+			fmt.Fprint(os.Stdout, string(contents))
 		} else {
 			t := os.Args[2]
 			v, err := strconv.Atoi(t)
