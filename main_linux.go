@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"os"
@@ -62,35 +63,45 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
 	if len(batteries) == 0 {
 		fmt.Fprintln(os.Stderr, "This program is most likely not compatible with your system. See\nhttps://github.com/tshakalekholoane/bat#disclaimer for details.")
 		os.Exit(1)
 	}
-
 	first := batteries[0]
+	data := make([]byte, 32)
+	mustRead := func(variable string) string {
+		f, err := os.Open(filepath.Join(first, variable))
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer f.Close()
+		n, err := f.Read(data)
+		if err != nil && err != io.EOF {
+			log.Fatal(err)
+		}
+		return string(data[:n-1])
+	}
 	switch option := os.Args[1]; option {
 	case "-h", "--help":
 		usage()
 	case "-v", "--version":
 		fmt.Fprintf(os.Stdout, version, tag, time.Now().Year())
 	case "capacity", "status":
-		contents, err := os.ReadFile(filepath.Join(first, option))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Fprint(os.Stdout, string(contents))
+		fmt.Fprintln(os.Stdout, mustRead(option))
 	case "health":
-		// Some devices use charge_* and others energy_* so probe both.
-		var enoent bool
-		a, err := os.ReadFile(filepath.Join(first, "charge_full"))
+		// Some devices use charge_* and others energy_* so probe both. The
+		// health is computed as v / w where v is the eroded capacity and w
+		//	is the capacity when the battery was new.
+		enoent := false
+		a, b := "charge_full", "charge_full_design"
+		_, err := os.Stat(filepath.Join(first, a))
 		if err != nil {
 			if !errors.Is(err, fs.ErrNotExist) {
 				log.Fatal(err)
 			}
 			enoent = true
 		}
-		b, err := os.ReadFile(filepath.Join(first, "charge_full_design"))
+		_, err = os.Stat(filepath.Join(first, b))
 		if err != nil {
 			if !errors.Is(err, fs.ErrNotExist) {
 				log.Fatal(err)
@@ -98,25 +109,13 @@ func main() {
 			enoent = true
 		}
 		if enoent {
-			a, err = os.ReadFile(filepath.Join(first, "energy_full"))
-			if err != nil {
-				if !errors.Is(err, fs.ErrNotExist) {
-					log.Fatal(err)
-				}
-			}
-			b, err = os.ReadFile(filepath.Join(first, "energy_full_design"))
-			if err != nil {
-				if !errors.Is(err, fs.ErrNotExist) {
-					log.Fatal(err)
-				}
-			}
+			a, b = "energy_full", "energy_full_design"
 		}
-		var v, w int
-		_, err = fmt.Sscanf(string(a), "%d\n", &v)
+		v, err := strconv.Atoi(mustRead(a))
 		if err != nil {
 			log.Fatal(err)
 		}
-		_, err = fmt.Sscanf(string(b), "%d\n", &w)
+		w, err := strconv.Atoi(mustRead(b))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -131,7 +130,6 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-
 		// systemd 244-rc1 is the earliest version to allow restarts for
 		// oneshot services.
 		if version < 244 {
@@ -139,12 +137,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		contents, err := os.ReadFile(filepath.Join(first, threshold))
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		current, err := strconv.Atoi(strings.TrimSpace(string(contents)))
+		current, err := strconv.Atoi(mustRead(threshold))
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -165,11 +158,7 @@ func main() {
 		fmt.Fprintln(os.Stdout, "Persistence of the current charging threshold enabled.")
 	case "threshold":
 		if len(os.Args) < 3 {
-			contents, err := os.ReadFile(filepath.Join(first, threshold))
-			if err != nil {
-				log.Fatal(err)
-			}
-			fmt.Fprint(os.Stdout, string(contents))
+			fmt.Fprintln(os.Stdout, mustRead(threshold))
 		} else {
 			t := os.Args[2]
 			v, err := strconv.Atoi(t)
