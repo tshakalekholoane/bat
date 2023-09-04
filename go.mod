@@ -1,10 +1,8 @@
 module tshaka.dev/x/bat
 
-go 1.20
-
-require gotest.tools/v3 v3.5.0
+go 1.16
 
 require (
-	github.com/google/go-cmp v0.5.9 // indirect
-	golang.org/x/sys v0.11.0
+	golang.org/x/sys v0.12.0
+	gotest.tools/v3 v3.5.0
 )
