@@ -15,6 +15,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"text/template"
 	"time"
 
 	"golang.org/x/sys/unix"
@@ -23,10 +24,10 @@ import (
 const (
 	device    = "/sys/class/power_supply/BAT?"
 	threshold = "charge_control_end_threshold"
-	service   = "/etc/systemd/system/bat@.service"
+	services  = "/etc/systemd/system/"
 )
 
-var targets = [...]string{
+var events = [...]string{
 	"hibernate",
 	"hybrid-sleep",
 	"multi-user",
@@ -37,7 +38,7 @@ var targets = [...]string{
 var build, tag string
 
 var (
-	//go:embed bat@.service
+	//go:embed bat.service
 	unit string
 	//go:embed help.fmt
 	help string
@@ -141,16 +142,43 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
-		tmpl := fmt.Sprintf(unit, current)
-		if err := os.WriteFile(service, []byte(tmpl), 0o644); err != nil {
-			if errors.Is(err, syscall.EACCES) {
-				fmt.Fprintln(os.Stderr, "Permission denied. Try running this command using sudo.")
+
+		shell, err := exec.LookPath("bash")
+		if err != nil {
+			if errors.Is(err, exec.ErrNotFound) {
+				fmt.Fprintln(os.Stderr, "Could not find Bash on your system.")
 				os.Exit(1)
 			}
 			log.Fatal(err)
 		}
-		for _, target := range targets {
-			cmd := exec.Command("systemctl", "enable", fmt.Sprintf("bat@%s.service", target))
+
+		for _, event := range events {
+			tmpl, err := template.New("unit").Parse(unit)
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			name := services + "bat-" + event + ".service"
+			f, err := os.Create(name)
+			if err != nil {
+				if errors.Is(err, syscall.EACCES) {
+					fmt.Fprintln(os.Stderr, "Permission denied. Try running this command using sudo.")
+					os.Exit(1)
+				}
+				log.Fatal(err)
+			}
+			defer f.Close()
+
+			service := struct {
+				Event     string
+				Shell     string
+				Threshold int
+			}{event, shell, current}
+			if err := tmpl.Execute(f, service); err != nil {
+				log.Fatal(err)
+			}
+
+			cmd := exec.Command("systemctl", "enable", name)
 			if err := cmd.Run(); err != nil {
 				log.Fatal(err)
 			}
@@ -202,9 +230,10 @@ func main() {
 			fmt.Fprintln(os.Stdout, "Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
 		}
 	case "reset":
-		for _, target := range targets {
+		for _, event := range events {
+			name := services + "bat-" + event + ".service"
 			buf := new(bytes.Buffer)
-			cmd := exec.Command("systemctl", "disable", fmt.Sprintf("bat@%s.service", target))
+			cmd := exec.Command("systemctl", "disable", name)
 			cmd.Stderr = buf
 			if err := cmd.Run(); err != nil {
 				switch message := buf.String(); {
@@ -217,9 +246,9 @@ func main() {
 					log.Fatal(err)
 				}
 			}
-		}
-		if err := os.Remove(service); err != nil && !errors.Is(err, syscall.ENOENT) {
-			log.Fatal(err)
+			if err := os.Remove(name); err != nil && !errors.Is(err, syscall.ENOENT) {
+				log.Fatal(err)
+			}
 		}
 		fmt.Fprintln(os.Stdout, "Charging threshold persistence reset.")
 	default:
