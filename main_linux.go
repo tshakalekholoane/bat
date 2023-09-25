@@ -69,6 +69,9 @@ func main() {
 		os.Exit(1)
 	}
 	first := batteries[0]
+	if len(batteries) > 1 {
+		fmt.Fprintln(os.Stderr, "More than 1 battery device found, using " + first)
+	}
 	data := make([]byte, 32)
 	mustRead := func(variable string) string {
 		f, err := os.Open(filepath.Join(first, variable))
@@ -143,10 +146,10 @@ func main() {
 			log.Fatal(err)
 		}
 
-		shell, err := exec.LookPath("bash")
+		shell, err := exec.LookPath("sh")
 		if err != nil {
 			if errors.Is(err, exec.ErrNotFound) {
-				fmt.Fprintln(os.Stderr, "Could not find Bash on your system.")
+				fmt.Fprintln(os.Stderr, "Could not find 'sh' on your system.")
 				os.Exit(1)
 			}
 			log.Fatal(err)
@@ -173,7 +176,8 @@ func main() {
 				Event     string
 				Shell     string
 				Threshold int
-			}{event, shell, current}
+				Path      string
+			}{event, shell, current, first}
 			if err := tmpl.Execute(f, service); err != nil {
 				log.Fatal(err)
 			}

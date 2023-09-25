@@ -95,4 +95,4 @@ sudo bat persist
 
 Linux kernel version later than 5.4-rc1 which is the [earliest version to expose the battery charging threshold variable](https://github.com/torvalds/linux/commit/7973353e92ee1e7ca3b2eb361a4b7cb66c92abee).
 
-To persist the threshold setting between restarts, the application relies on [systemd](https://systemd.io/), particularly a version later than 244, and [Bash](https://www.gnu.org/software/bash/) which are bundled with most Linux distributions. 
+To persist the threshold setting between restarts, the application relies on [systemd](https://systemd.io/), particularly a version later than 244, and a POSIX shell `sh`, which are bundled with most Linux distributions.
