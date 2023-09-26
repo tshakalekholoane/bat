@@ -35,7 +35,7 @@ COMMANDS
     status
         Print the charging status.
 
-    threshold num
+    threshold [num]
         Print the current charging threshold limit.
 
         If num is specified--which should be a value between 1 and 100--this
@@ -93,6 +93,6 @@ sudo bat persist
 
 ## Requirements
 
-Linux kernel version later than 5.4-rc1 which is the [earliest version to expose the battery charging threshold variable](https://github.com/torvalds/linux/commit/7973353e92ee1e7ca3b2eb361a4b7cb66c92abee).
+Linux kernel version 5.4-rc1, which is the [earliest version to expose the battery charging threshold variable](https://github.com/torvalds/linux/commit/7973353e92ee1e7ca3b2eb361a4b7cb66c92abee), or later.
 
-To persist the threshold setting between restarts, the application relies on [systemd](https://systemd.io/), particularly a version later than 244, and a POSIX shell `sh`, which are bundled with most Linux distributions.
+To persist the threshold setting between restarts, the application relies on [systemd](https://systemd.io/) version 244 or later, which is bundled with most Linux distributions.
