@@ -5,7 +5,7 @@ StartLimitBurst=0
 
 [Service]
 Type=oneshot
-ExecStart={{.Shell}} -c 'echo {{.Threshold}} >{{.Path}}'
+ExecStart={{.Shell}} -c 'echo {{.Threshold}} > {{.Path}}'
 Restart=on-failure
 RemainAfterExit=true
 
