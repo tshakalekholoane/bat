@@ -68,10 +68,8 @@ func main() {
 		fmt.Fprintln(os.Stderr, "This program is most likely not compatible with your system. See\nhttps://github.com/tshakalekholoane/bat#disclaimer for details.")
 		os.Exit(1)
 	}
+
 	first, _ := filepath.Split(batteries[0])
-	if len(batteries) > 1 {
-		fmt.Fprintln(os.Stderr, "More than 1 battery device found, using " + first)
-	}
 	data := make([]byte, 32)
 	mustRead := func(variable string) string {
 		f, err := os.Open(filepath.Join(first, variable))
