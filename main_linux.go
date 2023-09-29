@@ -69,9 +69,6 @@ func main() {
 		os.Exit(1)
 	}
 	first := batteries[0]
-	if len(batteries) > 1 {
-		fmt.Fprintln(os.Stderr, "More than 1 battery device found, using " + first)
-	}
 	data := make([]byte, 32)
 	mustRead := func(variable string) string {
 		f, err := os.Open(filepath.Join(first, variable))
