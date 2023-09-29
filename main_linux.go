@@ -171,10 +171,10 @@ func main() {
 
 			service := struct {
 				Event     string
+				Path      string
 				Shell     string
 				Threshold int
-				Path      string
-			}{event, shell, current, first}
+			}{event, first, shell, current}
 			if err := tmpl.Execute(f, service); err != nil {
 				log.Fatal(err)
 			}
