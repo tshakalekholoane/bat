@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -152,6 +153,8 @@ func main() {
 			log.Fatal(err)
 		}
 
+		path := path.Join(first, threshold)
+
 		for _, event := range events {
 			tmpl, err := template.New("unit").Parse(unit)
 			if err != nil {
@@ -174,7 +177,7 @@ func main() {
 				Path      string
 				Shell     string
 				Threshold int
-			}{event, first, shell, current}
+			}{event, path, shell, current}
 			if err := tmpl.Execute(f, service); err != nil {
 				log.Fatal(err)
 			}
