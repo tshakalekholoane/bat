@@ -5,7 +5,7 @@ StartLimitBurst=0
 
 [Service]
 Type=oneshot
-ExecStart={{.Shell}} -c 'echo {{.Threshold}} > /sys/class/power_supply/BAT?/charge_control_end_threshold'
+ExecStart={{.Shell}} -c 'echo {{.Threshold}} > {{.Path}}'
 Restart=on-failure
 RemainAfterExit=true
 

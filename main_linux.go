@@ -11,6 +11,7 @@ import (
 	"log"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -143,14 +144,16 @@ func main() {
 			log.Fatal(err)
 		}
 
-		shell, err := exec.LookPath("bash")
+		shell, err := exec.LookPath("sh")
 		if err != nil {
 			if errors.Is(err, exec.ErrNotFound) {
-				fmt.Fprintln(os.Stderr, "Could not find Bash on your system.")
+				fmt.Fprintln(os.Stderr, "Could not find 'sh' on your system.")
 				os.Exit(1)
 			}
 			log.Fatal(err)
 		}
+
+		path := path.Join(first, threshold)
 
 		for _, event := range events {
 			tmpl, err := template.New("unit").Parse(unit)
@@ -171,9 +174,10 @@ func main() {
 
 			service := struct {
 				Event     string
+				Path      string
 				Shell     string
 				Threshold int
-			}{event, shell, current}
+			}{event, path, shell, current}
 			if err := tmpl.Execute(f, service); err != nil {
 				log.Fatal(err)
 			}
