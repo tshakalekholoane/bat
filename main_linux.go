@@ -47,17 +47,44 @@ var (
 	version string
 )
 
-func usage() {
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+var usage = func() string {
 	t, err := time.Parse("2006-01-02", build)
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Fprintf(os.Stdout, help, t.Format("02 January 2006"))
-}
+	return fmt.Sprintf(help, t.Format("02 January 2006"))
+}()
+
+type options struct{ help, version bool }
 
 func main() {
+	opts := &options{}
+	for _, arg := range os.Args {
+		switch arg {
+		case "-h", "--help":
+			opts.help = true
+		case "-v", "--version":
+			opts.version = true
+		}
+	}
+
 	if len(os.Args) == 1 {
-		usage()
+		fmt.Fprint(os.Stderr, usage)
+		os.Exit(2)
+	}
+
+	if opts.help {
+		fmt.Print(usage)
+		return
+	}
+
+	if opts.version {
+		fmt.Printf(version, tag, time.Now().Year())
 		return
 	}
 
@@ -86,13 +113,13 @@ func main() {
 		}
 		return string(data[:n-1])
 	}
-	switch option := os.Args[1]; option {
 	case "-h", "--help":
 		usage()
 	case "-v", "--version":
 		fmt.Fprintf(os.Stdout, version, tag, time.Now().Year())
 	case "capacity", "status":
 		fmt.Fprintln(os.Stdout, mustRead(option))
+	switch command := os.Args[1]; command {
 	case "health":
 		// Some devices use charge_* and others energy_* so probe both. The
 		// health is computed as v / w where v is the eroded capacity and w
@@ -259,7 +286,7 @@ func main() {
 		}
 		fmt.Fprintln(os.Stdout, "Charging threshold persistence reset.")
 	default:
-		fmt.Fprintf(os.Stderr, "There is no %s option. Run `bat --help` to see a list of available options.\n", option)
+		fmt.Fprintf(os.Stderr, "There is no %s option. Run `bat --help` to see a list of available options.\n", command)
 		os.Exit(1)
 	}
 }
