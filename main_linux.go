@@ -61,6 +61,9 @@ func main() {
 		return
 	}
 
+	log.SetFlags(0)
+	log.SetPrefix("bat: ")
+
 	batteries, err := filepath.Glob(device)
 	if err != nil {
 		log.Fatal(err)
