@@ -47,9 +47,68 @@ var (
 	version string
 )
 
+type battery struct {
+	path string
+	buf  []byte
+}
+
+func (b *battery) read(v string) string {
+	f, err := os.Open(filepath.Join(b.path, v))
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer f.Close()
+	n, err := f.Read(b.buf)
+	if err != nil && err != io.EOF {
+		log.Fatal(err)
+	}
+	return string(b.buf[:n-1])
+}
+
+func (b *battery) capacity() string  { return b.read("capacity") }
+func (b *battery) status() string    { return b.read("status") }
+func (b *battery) threshold() string { return b.read(threshold) }
+
+func (b *battery) health() int {
+	// Some devices use charge_* and others energy_* so probe both. The
+	// health is computed as v / w where v is the eroded capacity and w is
+	// the capacity when the battery was new.
+	enoent := false
+	x, y := "charge_full", "charge_full_design"
+	_, err := os.Stat(filepath.Join(b.path, x))
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Fatal(err)
+		}
+		enoent = true
+	}
+	_, err = os.Stat(filepath.Join(b.path, y))
+	if err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			log.Fatal(err)
+		}
+		enoent = true
+	}
+	if enoent {
+		x, y = "energy_full", "energy_full_design"
+	}
+	v, err := strconv.Atoi(b.read(x))
+	if err != nil {
+		log.Fatal(err)
+	}
+	w, err := strconv.Atoi(b.read(y))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return v * 100 / w
+}
+
+func (b *battery) setThreshold(v string) error {
+	err := os.WriteFile(filepath.Join(b.path, threshold), []byte(v), 0o644)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 var usage = func() string {
@@ -99,82 +158,40 @@ func main() {
 		fmt.Fprintln(os.Stderr, "This program is most likely not compatible with your system. See\nhttps://github.com/tshakalekholoane/bat#disclaimer for details.")
 		os.Exit(1)
 	}
-	first := batteries[0]
-	data := make([]byte, 32)
-	mustRead := func(variable string) string {
-		f, err := os.Open(filepath.Join(first, variable))
-		if err != nil {
-			log.Fatal(err)
-		}
-		defer f.Close()
-		n, err := f.Read(data)
-		if err != nil && err != io.EOF {
-			log.Fatal(err)
-		}
-		return string(data[:n-1])
+
+	batt := &battery{
+		path: batteries[0],
+		buf:  make([]byte, 32),
 	}
-	case "-h", "--help":
-		usage()
-	case "-v", "--version":
-		fmt.Fprintf(os.Stdout, version, tag, time.Now().Year())
-	case "capacity", "status":
-		fmt.Fprintln(os.Stdout, mustRead(option))
+
 	switch command := os.Args[1]; command {
+	case "capacity":
+		fmt.Println(batt.capacity())
+	case "status":
+		fmt.Println(batt.status())
 	case "health":
-		// Some devices use charge_* and others energy_* so probe both. The
-		// health is computed as v / w where v is the eroded capacity and w
-		//	is the capacity when the battery was new.
-		enoent := false
-		a, b := "charge_full", "charge_full_design"
-		_, err := os.Stat(filepath.Join(first, a))
-		if err != nil {
-			if !errors.Is(err, fs.ErrNotExist) {
-				log.Fatal(err)
-			}
-			enoent = true
-		}
-		_, err = os.Stat(filepath.Join(first, b))
-		if err != nil {
-			if !errors.Is(err, fs.ErrNotExist) {
-				log.Fatal(err)
-			}
-			enoent = true
-		}
-		if enoent {
-			a, b = "energy_full", "energy_full_design"
-		}
-		v, err := strconv.Atoi(mustRead(a))
-		if err != nil {
-			log.Fatal(err)
-		}
-		w, err := strconv.Atoi(mustRead(b))
-		if err != nil {
-			log.Fatal(err)
-		}
-		fmt.Fprintln(os.Stdout, v*100/w)
+		fmt.Println(batt.health())
 	case "persist":
-		output, err := exec.Command("systemctl", "--version").CombinedOutput()
+		out, err := exec.Command("systemctl", "--version").CombinedOutput()
 		if err != nil {
 			log.Fatal(err)
 		}
-		var version int
-		_, err = fmt.Sscanf(string(output), "systemd %d", &version)
+		var rev int
+		_, err = fmt.Sscanf(string(out), "systemd %d", &rev)
 		if err != nil {
 			log.Fatal(err)
 		}
 		// systemd 244-rc1 is the earliest version to allow restarts for
 		// oneshot services.
-		if version < 244 {
+		if rev < 244 {
 			fmt.Fprintln(os.Stderr, "Requires systemd version 243-rc1 or later.")
 			os.Exit(1)
 		}
-
-		current, err := strconv.Atoi(mustRead(threshold))
+		curr, err := strconv.Atoi(batt.threshold())
 		if err != nil {
 			log.Fatal(err)
 		}
-
-		shell, err := exec.LookPath("sh")
+		sh, err := exec.LookPath("sh")
 		if err != nil {
 			if errors.Is(err, exec.ErrNotFound) {
 				fmt.Fprintln(os.Stderr, "Could not find 'sh' on your system.")
@@ -182,15 +199,9 @@ func main() {
 			}
 			log.Fatal(err)
 		}
-
-		path := path.Join(first, threshold)
-
+		p := path.Join(batt.path, threshold)
 		for _, event := range events {
-			tmpl, err := template.New("unit").Parse(unit)
-			if err != nil {
-				log.Fatal(err)
-			}
-
+			tmpl := template.Must(template.New("unit").Parse(unit))
 			name := services + "bat-" + event + ".service"
 			f, err := os.Create(name)
 			if err != nil {
@@ -201,42 +212,26 @@ func main() {
 				log.Fatal(err)
 			}
 			defer f.Close()
-
 			service := struct {
 				Event     string
 				Path      string
 				Shell     string
 				Threshold int
-			}{event, path, shell, current}
+			}{event, p, sh, curr}
 			if err := tmpl.Execute(f, service); err != nil {
 				log.Fatal(err)
 			}
-
-			cmd := exec.Command("systemctl", "enable", name)
-			if err := cmd.Run(); err != nil {
+			if err := exec.Command("systemctl", "enable", name).Run(); err != nil {
 				log.Fatal(err)
 			}
 		}
 		fmt.Println("Persistence of the current charging threshold enabled.")
 	case "threshold":
 		if len(os.Args) < 3 {
-			fmt.Fprintln(os.Stdout, mustRead(threshold))
+			// Get.
+			fmt.Println(batt.threshold())
 		} else {
-			t := os.Args[2]
-			v, err := strconv.Atoi(t)
-			if err != nil {
-				if errors.Is(err, strconv.ErrSyntax) {
-					fmt.Fprintln(os.Stderr, "Argument should be an integer.")
-					os.Exit(1)
-				}
-				log.Fatal(err)
-			}
-
-			if v < 1 || v > 100 {
-				fmt.Fprintln(os.Stderr, "Threshold value should be between 1 and 100.")
-				os.Exit(1)
-			}
-
+			// Set.
 			var utsname unix.Utsname
 			if err = unix.Uname(&utsname); err != nil {
 				log.Fatal(err)
@@ -246,7 +241,6 @@ func main() {
 			if err != nil {
 				log.Fatal(err)
 			}
-
 			// The earliest version of the Linux kernel to expose the battery
 			// charging threshold is 5.4.
 			if maj <= 5 && (maj != 5 || min < 4) {
@@ -254,7 +248,21 @@ func main() {
 				os.Exit(1)
 			}
 
-			if err := os.WriteFile(filepath.Join(first, threshold), []byte(t), 0o644); err != nil {
+			v := os.Args[2]
+			w, err := strconv.Atoi(v)
+			if err != nil {
+				if errors.Is(err, strconv.ErrSyntax) {
+					fmt.Fprintln(os.Stderr, "Argument should be an integer.")
+					os.Exit(1)
+				}
+				log.Fatal(err)
+			}
+			if w < 1 || w > 100 {
+				fmt.Fprintln(os.Stderr, "Threshold value should be between 1 and 100.")
+				os.Exit(1)
+			}
+
+			if err := batt.setThreshold(v); err != nil {
 				if errors.Is(err, syscall.EACCES) {
 					fmt.Fprintln(os.Stderr, "Permission denied. Try running this command using sudo.")
 					os.Exit(1)
