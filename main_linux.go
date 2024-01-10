@@ -217,7 +217,7 @@ func main() {
 				log.Fatal(err)
 			}
 		}
-		fmt.Fprintln(os.Stdout, "Persistence of the current charging threshold enabled.")
+		fmt.Println("Persistence of the current charging threshold enabled.")
 	case "threshold":
 		if len(os.Args) < 3 {
 			fmt.Fprintln(os.Stdout, mustRead(threshold))
@@ -261,7 +261,7 @@ func main() {
 				}
 				log.Fatal(err)
 			}
-			fmt.Fprintln(os.Stdout, "Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
+			fmt.Println("Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
 		}
 	case "reset":
 		for _, event := range events {
@@ -284,7 +284,7 @@ func main() {
 				log.Fatal(err)
 			}
 		}
-		fmt.Fprintln(os.Stdout, "Charging threshold persistence reset.")
+		fmt.Println("Charging threshold persistence reset.")
 	default:
 		fmt.Fprintf(os.Stderr, "There is no %s option. Run `bat --help` to see a list of available options.\n", command)
 		os.Exit(1)
