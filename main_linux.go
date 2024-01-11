@@ -297,6 +297,10 @@ func main() {
 				}
 			}
 			if err := os.Remove(name); err != nil && !errors.Is(err, syscall.ENOENT) {
+				if errors.Is(err, syscall.EACCES) {
+					fmt.Fprintln(os.Stderr, "Permission denied. Try running this command using sudo.")
+					os.Exit(1)
+				}
 				panic(err)
 			}
 		}
