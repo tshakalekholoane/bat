@@ -146,7 +146,7 @@ func main() {
 	}
 
 	if opts.version {
-		fmt.Printf(version, tag, time.Now().Year())
+		fmt.Printf(version, tag)
 		return
 	}
 
