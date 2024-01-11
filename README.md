@@ -14,7 +14,7 @@ SYNOPSIS
 
 OPTIONS
     -d, --debug
-       Display debug information.
+        Display debug information.
 
     -h, --help
         Print this help document.
