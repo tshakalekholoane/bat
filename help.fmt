@@ -9,7 +9,7 @@ SYNOPSIS
 
 OPTIONS
     -d, --debug
-       Display debug information. Please use this when filing an issue.
+        Display debug information. Please use this when filing an issue.
 
     -h, --help
         Display this help document and exit.
