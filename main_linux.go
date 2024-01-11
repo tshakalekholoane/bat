@@ -8,11 +8,11 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"log"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
@@ -55,12 +55,12 @@ type battery struct {
 func (b *battery) read(v string) string {
 	f, err := os.Open(filepath.Join(b.path, v))
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	defer f.Close()
 	n, err := f.Read(b.buf)
 	if err != nil && err != io.EOF {
-		log.Fatal(err)
+		panic(err)
 	}
 	return string(b.buf[:n-1])
 }
@@ -78,14 +78,14 @@ func (b *battery) health() int {
 	_, err := os.Stat(filepath.Join(b.path, x))
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			log.Fatal(err)
+			panic(err)
 		}
 		enoent = true
 	}
 	_, err = os.Stat(filepath.Join(b.path, y))
 	if err != nil {
 		if !errors.Is(err, fs.ErrNotExist) {
-			log.Fatal(err)
+			panic(err)
 		}
 		enoent = true
 	}
@@ -94,11 +94,11 @@ func (b *battery) health() int {
 	}
 	v, err := strconv.Atoi(b.read(x))
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	w, err := strconv.Atoi(b.read(y))
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	return v * 100 / w
 }
@@ -112,19 +112,22 @@ func (b *battery) setThreshold(v string) error {
 }
 
 var usage = func() string {
-	t, err := time.Parse("2006-01-02", build)
+	// Requires a build script to set the build time.
+	date, err := time.Parse("2006-01-02", build)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
-	return fmt.Sprintf(help, t.Format("02 January 2006"))
+	return fmt.Sprintf(help, date.Format("02 January 2006"))
 }()
 
-type options struct{ help, version bool }
+type options struct{ debug, help, version bool }
 
 func main() {
 	opts := &options{}
 	for _, arg := range os.Args {
 		switch arg {
+		case "-d", "--debug":
+			opts.debug = true
 		case "-h", "--help":
 			opts.help = true
 		case "-v", "--version":
@@ -147,12 +150,19 @@ func main() {
 		return
 	}
 
-	log.SetFlags(0)
-	log.SetPrefix("bat: ")
+	defer func() {
+		if err := recover(); err != nil {
+			if opts.debug {
+				fmt.Fprintf(os.Stderr, "%s\n\n%s", err, string(debug.Stack()))
+			} else {
+				fmt.Println("A fatal error occurred. Please rerun the command with the `--debug` flag enabled\nand file an issue with the resulting output at the following address\nhttps://github.com/tshakalekholoane/bat/issues/new.")
+			}
+		}
+	}()
 
 	batteries, err := filepath.Glob(device)
 	if err != nil {
-		log.Fatal(err)
+		panic(err)
 	}
 	if len(batteries) == 0 {
 		fmt.Fprintln(os.Stderr, "This program is most likely not compatible with your system. See\nhttps://github.com/tshakalekholoane/bat#disclaimer for details.")
@@ -174,12 +184,12 @@ func main() {
 	case "persist":
 		out, err := exec.Command("systemctl", "--version").CombinedOutput()
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 		var rev int
 		_, err = fmt.Sscanf(string(out), "systemd %d", &rev)
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 		// systemd 244-rc1 is the earliest version to allow restarts for
 		// oneshot services.
@@ -187,9 +197,9 @@ func main() {
 			fmt.Fprintln(os.Stderr, "Requires systemd version 243-rc1 or later.")
 			os.Exit(1)
 		}
-		curr, err := strconv.Atoi(batt.threshold())
+		current, err := strconv.Atoi(batt.threshold())
 		if err != nil {
-			log.Fatal(err)
+			panic(err)
 		}
 		sh, err := exec.LookPath("sh")
 		if err != nil {
@@ -197,9 +207,9 @@ func main() {
 				fmt.Fprintln(os.Stderr, "Could not find 'sh' on your system.")
 				os.Exit(1)
 			}
-			log.Fatal(err)
+			panic(err)
 		}
-		p := path.Join(batt.path, threshold)
+		path := path.Join(batt.path, threshold)
 		for _, event := range events {
 			tmpl := template.Must(template.New("unit").Parse(unit))
 			name := services + "bat-" + event + ".service"
@@ -209,20 +219,18 @@ func main() {
 					fmt.Fprintln(os.Stderr, "Permission denied. Try running this command using sudo.")
 					os.Exit(1)
 				}
-				log.Fatal(err)
+				panic(err)
 			}
 			defer f.Close()
 			service := struct {
-				Event     string
-				Path      string
-				Shell     string
-				Threshold int
-			}{event, p, sh, curr}
+				Event, Path, Shell string
+				Threshold          int
+			}{event, path, sh, current}
 			if err := tmpl.Execute(f, service); err != nil {
-				log.Fatal(err)
+				panic(err)
 			}
 			if err := exec.Command("systemctl", "enable", name).Run(); err != nil {
-				log.Fatal(err)
+				panic(err)
 			}
 		}
 		fmt.Println("Persistence of the current charging threshold enabled.")
@@ -234,12 +242,12 @@ func main() {
 			// Set.
 			var utsname unix.Utsname
 			if err = unix.Uname(&utsname); err != nil {
-				log.Fatal(err)
+				panic(err)
 			}
 			var maj, min int
 			_, err = fmt.Sscanf(string(utsname.Release[:]), "%d.%d", &maj, &min)
 			if err != nil {
-				log.Fatal(err)
+				panic(err)
 			}
 			// The earliest version of the Linux kernel to expose the battery
 			// charging threshold is 5.4.
@@ -255,7 +263,7 @@ func main() {
 					fmt.Fprintln(os.Stderr, "Argument should be an integer.")
 					os.Exit(1)
 				}
-				log.Fatal(err)
+				panic(err)
 			}
 			if w < 1 || w > 100 {
 				fmt.Fprintln(os.Stderr, "Threshold value should be between 1 and 100.")
@@ -267,7 +275,7 @@ func main() {
 					fmt.Fprintln(os.Stderr, "Permission denied. Try running this command using sudo.")
 					os.Exit(1)
 				}
-				log.Fatal(err)
+				panic(err)
 			}
 			fmt.Println("Charging threshold set.\nRun `sudo bat persist` to persist the setting between restarts.")
 		}
@@ -285,11 +293,11 @@ func main() {
 					fmt.Fprintln(os.Stderr, "Permission denied. Try running this command using sudo.")
 					os.Exit(1)
 				default:
-					log.Fatal(err)
+					panic(err)
 				}
 			}
 			if err := os.Remove(name); err != nil && !errors.Is(err, syscall.ENOENT) {
-				log.Fatal(err)
+				panic(err)
 			}
 		}
 		fmt.Println("Charging threshold persistence reset.")

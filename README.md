@@ -5,14 +5,18 @@
 
 ```                                     bat(1)
 NAME
-    bat -- battery management utility for Linux laptops 
+    bat -- battery management utility for Linux laptops
 
-    bat [-hv]
-        [--help] [--version]
+SYNOPSIS
+    bat [-d] [-h] [-v]
+        [--debug] [--help] [--version]
         <command> [<arg>]
 
 OPTIONS
-    -h, --help      
+    -d, --debug
+       Display debug information.
+
+    -h, --help
         Print this help document.
 
     -v, --version
@@ -25,11 +29,11 @@ COMMANDS
     health
         Print the battery health status.
 
-    persist   
+    persist
         Persist the current threshold between restarts.
 
-    reset    
-        Undoes the persistence setting of the charging threshold between 
+    reset
+        Undoes the persistence setting of the charging threshold between
         restarts.
 
     status
@@ -54,7 +58,7 @@ There have also been some [problems setting the charging threshold inside of a v
 
 ## Installation
 
-Precompiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/tshakalekholoane/bat/releases), the latest of which can be downloaded from [here](https://github.com/tshakalekholoane/bat/releases/download/0.14/bat).
+Pre-compiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/tshakalekholoane/bat/releases), the latest of which can be downloaded from [here](https://github.com/tshakalekholoane/bat/releases/download/1.0/bat).
 
 After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
 
@@ -82,11 +86,11 @@ You can also rename the binary to something else if another program with the sam
 # Print the current battery charging threshold.
 bat threshold
 
-# Set a new charging threshold, say 80% (requires superuser 
+# Set a new charging threshold, say 80% (requires superuser
 # permissions).
 sudo bat threshold 80
 
-# Persist the current charging threshold setting between restarts 
+# Persist the current charging threshold setting between restarts
 # (requires superuser permissions).
 sudo bat persist
 ```

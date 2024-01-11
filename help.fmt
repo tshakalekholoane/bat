@@ -1,15 +1,18 @@
                                      bat(1)
 NAME
-    bat -- battery management utility for Linux laptops 
+    bat -- battery management utility for Linux laptops
 
 SYNOPSIS
-    bat [-hv]
-        [--help] [--version]
+    bat [-d] [-h] [-v]
+        [--debug] [--help] [--version]
         <command> [<arg>]
 
 OPTIONS
-    -h, --help      
-        Print this help document.
+    -d, --debug
+       Display debug information. Please use this when filing an issue.
+
+    -h, --help
+        Display this help document and exit.
 
     --version
         Display version information and exit.
@@ -21,11 +24,11 @@ COMMANDS
     health
         Print the battery health status.
 
-    persist   
+    persist
         Persist the current threshold between restarts.
 
-    reset    
-        Undoes the persistence setting of the charging threshold between 
+    reset
+        Undoes the persistence setting of the charging threshold between
         restarts.
 
     status
@@ -41,12 +44,12 @@ EXAMPLES
     - Print the current battery charging threshold.
 
         $ bat threshold
-    
+
     - Set a charging threshold that will stop charging at 80%%. This requires
       superuser permissions.
 
         $ sudo bat threshold 80
-    
+
     - Persist the current charging threshold setting between restarts. This also
       requires superuser permissions.
 
