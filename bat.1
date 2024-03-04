@@ -1,0 +1,77 @@
+.TH BAT 1 "04 March 2024" "1.1" "General Commands Manual"
+.SH NAME
+bat \-\- battery management utility for Linux laptops
+.SH SYNOPSIS
+.B 
+bat
+[\-d | \-\-debug] [\-h | \-\-help] [\-v | \-\-version]
+    <command> [<arg>]
+.SH DESCRIPTION
+.PP
+This utility provides several commands to manage your laptop's battery.
+.SH OPTIONS
+.TP
+.B \-d, \-\-debug
+Display debug information. Please use this when filing an issue.
+.TP
+.B \-h, \-\-help
+Display this help document and exit.
+.TP
+.B \-\-version
+Display version information and exit.
+.SH COMMANDS
+.TP
+.B capacity
+Print the current battery level.
+.TP
+.B health
+Print the battery health status.
+.TP
+.B persist
+Persist the current threshold between restarts.
+.TP
+.B reset
+Undoes the persistence setting of the charging threshold between restarts.
+.TP
+.B status
+Print the charging status.
+.TP
+.B threshold \fInum\fP
+Print the current charging threshold limit. If num is specified--which should be a value between 1 and 100--this will set a new charging threshold limit.
+.SH EXAMPLES
+.PP
+Print the current battery charging threshold.
+.RS
+.nf
+.PP
+$ bat threshold
+.fi
+.RE
+.PP
+Set a charging threshold that will stop charging at 80%. This requires superuser permissions.
+.RS
+.nf
+.PP
+$ sudo bat threshold 80
+.fi
+.RE
+.PP
+Persist the current charging threshold setting between restarts. This also requires superuser permissions.
+.RS
+.nf
+.PP
+$ sudo bat persist
+.fi
+.RE
+.SH SUPPORT
+.PP
+Report any issues on https://github.com/tshakalekholoane/bat/issues.
+.SH REFERENCE
+.PP
+https://wiki.archlinux.org/title/Laptop/ASUS#Battery_charge_threshold
+.SH "BUGS"
+.PP
+Setting the battery charging threshold inside of a virtual machine or distributions with an immutable file system might not work.
+.SH "AUTHOR"
+.PP
+Tshaka Lekholoane <mail+bat@tshaka.dev>

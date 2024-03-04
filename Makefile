@@ -23,7 +23,15 @@ build:
 	@$(info Building bat.)
 	GOOS=linux GOARCH=amd64 go build -ldflags=$(FLAGS) -o=./bin/bat .
 
-## test: runs tests
+## install: install the application
+.PHONY: install
+install: build
+	@$(info Installing binary.)
+	install ./bin/bat /usr/local/bin/
+	@$(info Installing manual page.)
+	mkdir -p /usr/local/share/man/man1 && cp ./bat.1 /usr/local/share/man/man1/
+
+## test: run tests
 .PHONY: test
 test: PKG := tshaka.dev/x/bat
 test: 

@@ -1,0 +1,21 @@
+bat - battery management utility for Linux laptops
+
+Usage:
+  bat [OPTIONS] COMMAND [arg]
+
+Options:
+  -d, --debug     Display debug information. Please use this when filing an
+                  issue.
+  -h, --help      Display this help document and exit.
+  -v, --version   Display version information and exit.
+
+Commands:
+  capacity        Print the current battery level.
+  health          Print the battery health status.
+  persist         Persist the current threshold between restarts.
+  reset           Undoes the persistence setting of the charging threshold
+                  between restarts.
+  status          Print the charging status.
+  threshold num   Print the current charging threshold limit. If num is
+                  specified--which should be a value between 1 and 100--this
+                  will set a new charging threshold limit.
