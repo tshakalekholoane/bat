@@ -46,6 +46,14 @@ var (
 	version string
 )
 
+func exists(battery, variable string) bool {
+	_, err := os.Stat(filepath.Join(battery, variable))
+	if err != nil && errors.Is(err, fs.ErrNotExist) {
+		return false
+	}
+	return true
+}
+
 func must[T any](v T, err error) T {
 	if err != nil {
 		panic(err)
@@ -146,6 +154,10 @@ func main() {
 		w := must(strconv.Atoi(must(read(bat, y))))
 		fmt.Println(v * 100 / w)
 	case "persist":
+		if !exists(bat, threshold) {
+			fmt.Fprintf(os.Stderr, "Charging threshold setting not found.\n")
+			os.Exit(1)
+		}
 		// systemd 244-rc1 is the earliest version to allow restarts for
 		// oneshot services.
 		out := must(exec.Command("systemctl", "--version").CombinedOutput())
@@ -191,7 +203,11 @@ func main() {
 		}
 		fmt.Println("Persistence of the current charging threshold enabled.")
 	case "threshold":
-		if len(os.Args) < 3 {
+		if !exists(bat, threshold) {
+			fmt.Fprintf(os.Stderr, "Charging threshold setting not found.\n")
+			os.Exit(1)
+		}
+		if len(os.Args) == 2 || len(os.Args) == 3 && opts.debug {
 			// Get.
 			fmt.Println(must(read(bat, threshold)))
 		} else {
