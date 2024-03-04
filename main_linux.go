@@ -17,7 +17,6 @@ import (
 	"strings"
 	"syscall"
 	"text/template"
-	"time"
 
 	"golang.org/x/sys/unix"
 )
@@ -41,7 +40,7 @@ var build, tag string
 var (
 	//go:embed bat.service
 	unit string
-	//go:embed help.fmt
+	//go:embed help.txt
 	help string
 	//go:embed version.fmt
 	version string
@@ -68,15 +67,6 @@ func read(battery, variable string) (string, error) {
 	return string(buf[:n-1]), nil
 }
 
-var usage = func() string {
-	// Requires a build script to set the build time.
-	date, err := time.Parse("2006-01-02", build)
-	if err != nil {
-		panic(err)
-	}
-	return fmt.Sprintf(help, date.Format("02 January 2006"))
-}()
-
 type options struct{ debug, help, version bool }
 
 func main() {
@@ -93,12 +83,12 @@ func main() {
 	}
 
 	if len(os.Args) == 1 {
-		fmt.Fprint(os.Stderr, usage)
+		fmt.Fprint(os.Stderr, help)
 		os.Exit(2)
 	}
 
 	if opts.help {
-		fmt.Print(usage)
+		fmt.Print(help)
 		return
 	}
 
@@ -269,7 +259,7 @@ func main() {
 		}
 		fmt.Println("Charging threshold persistence reset.")
 	default:
-		fmt.Fprintf(os.Stderr, "There is no %s option. Run `bat --help` to see a list of available options.\n", variable)
+		fmt.Fprintf(os.Stderr, "There is no %s command. Run `bat --help` to see a list of available commands.\n", variable)
 		os.Exit(1)
 	}
 }
