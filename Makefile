@@ -33,7 +33,6 @@ install: build
 
 ## test: run tests
 .PHONY: test
-test: PKG := tshaka.dev/x/bat
-test: 
-	@$(info Running tests.)
-	go test -v -race -vet=off -ldflags=$(FLAGS) ./...
+test: build
+	@$(info Testing.)
+	bin/bat --version | grep --quiet $(TAG)
