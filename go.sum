@@ -1,6 +1,2 @@
 golang.org/x/sys v0.27.0 h1:wBqf8DvsY9Y/2P8gAfPDEYNuS30J4lPHJxXSb/nJZ+s=
 golang.org/x/sys v0.27.0/go.mod h1:/VUhepiaJMQUp4+oa/7Zr1D23ma6VTLIYjOOTFZPUcA=
-golang.org/x/tools v0.16.0 h1:GO788SKMRunPIBCXiQyo2AaexLstOrVhuAL5YwsckQM=
-golang.org/x/tools v0.16.0/go.mod h1:kYVVN6I1mBNoB1OX+noeBjbRk4IUEPa7JJ+TJMEooJ0=
-tshaka.dev/x/diff v0.1.0 h1:zO4hxEhdcmq02Uq67oYAFVT0z7k1V95dt171Kue1bJA=
-tshaka.dev/x/diff v0.1.0/go.mod h1:ViaZ5Ct1ZZKJC6Wnii9RNfJCFzywYqKdRBtMNM2x9hs=
