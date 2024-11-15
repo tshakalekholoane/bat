@@ -17,5 +17,5 @@ Commands:
                   between restarts.
   status          Print the charging status.
   threshold num   Print the current charging threshold limit. If num is
-                  specified--which should be a value between 1 and 100--this
+                  specified (which should be a value between 1 and 100) this
                   will set a new charging threshold limit.
