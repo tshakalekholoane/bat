@@ -4,6 +4,7 @@ package main
 import (
 	"bytes"
 	_ "embed"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,6 +14,7 @@ import (
 	"path/filepath"
 	rtdebug "runtime/debug"
 	"strconv"
+	"strings"
 	"text/template"
 
 	"golang.org/x/sys/unix"
@@ -23,17 +25,21 @@ type Service struct {
 	Threshold          int
 }
 
+type Target struct {
+	Unit string `json:"unit"`
+}
+
 const threshold = "charge_control_end_threshold"
 
 var (
 	tag string
 
-	events = [...]string{
-		"hibernate",
-		"hybrid-sleep",
-		"multi-user",
-		"suspend",
-		"suspend-then-hibernate",
+	events = map[string]struct{}{
+		"hibernate":              {},
+		"hybrid-sleep":           {},
+		"multi-user":             {},
+		"suspend":                {},
+		"suspend-then-hibernate": {},
 	}
 
 	services = filepath.Join("/", "etc", "systemd", "system")
@@ -226,8 +232,27 @@ func main() {
 			panic(err)
 		}
 
+		// Creates services for events with defined targets (targets vary by
+		// distribution).
+		cmd := exec.Command("systemctl", "list-units", "--type", "target", "--all", "--plain", "--output", "json")
+		output, err = cmd.CombinedOutput()
+		if err != nil {
+			panic(err)
+		}
+		targets := make([]Target, 0)
+		if err = json.Unmarshal(output, &targets); err != nil {
+			panic(err)
+		}
+		available := make([]string, 0)
+		for _, target := range targets {
+			event := strings.TrimSuffix(target.Unit, ".target")
+			_, ok := events[event]
+			if ok {
+				available = append(available, event)
+			}
+		}
 		tmpl := template.Must(template.New("unit").Parse(unit))
-		for _, event := range events {
+		for _, event := range available {
 			service := "bat-" + event + ".service"
 			f, err := os.Create(filepath.Join(services, service))
 			if err != nil {
@@ -316,7 +341,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "reset":
-		for _, event := range events {
+		for event := range events {
 			service := "bat-" + event + ".service"
 			output, err := exec.Command("systemctl", "disable", service).CombinedOutput()
 			if err != nil {
