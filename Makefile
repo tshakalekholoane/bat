@@ -1,6 +1,5 @@
-BUILD = $(shell date -u +"%Y-%m-%d")
-TAG = $(shell git describe --always --dirty --tags --long)
-FLAGS = "-s -X $(PKG).build=$(BUILD) -X $(PKG).tag=$(TAG)"
+TAG   = $(shell git describe --always --dirty --tags --long)
+FLAGS = "-X $(PKG).tag=$(TAG)"
 
 ## help: print this help message
 .PHONY: help
@@ -21,15 +20,15 @@ audit: test
 build: PKG := main
 build: 
 	@$(info Building bat.)
-	GOOS=linux GOARCH=amd64 go build -ldflags=$(FLAGS) -o=./bin/bat .
+	GOOS=linux GOARCH=amd64 go build -ldflags=$(FLAGS) -o=bin/bat .
 
 ## install: install the application
 .PHONY: install
 install: build
-	@$(info Installing binary.)
-	install ./bin/bat /usr/local/bin/
+	@$(info Installing bat.)
+	install bin/bat /usr/local/bin/
 	@$(info Installing manual page.)
-	mkdir -p /usr/local/share/man/man1 && cp ./bat.1 /usr/local/share/man/man1/
+	mkdir -p /usr/local/share/man/man1 && cp bat.1 /usr/local/share/man/man1/
 
 ## test: run tests
 .PHONY: test
