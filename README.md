@@ -41,7 +41,7 @@ COMMANDS
     threshold num
         Print the current charging threshold limit.
 
-        If num is specified--which should be a value between 1 and 100--this
+        If num is specified (which should be a value between 1 and 100) this
         will set a new charging threshold limit.
 ```
 
