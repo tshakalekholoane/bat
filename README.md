@@ -57,7 +57,7 @@ There have also been some [problems setting the charging threshold inside of a v
 
 ## Installation
 
-Pre-compiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/tshakalekholoane/bat/releases), the latest of which can be downloaded from [here](https://github.com/tshakalekholoane/bat/releases/download/1.1/bat).
+Pre-compiled binaries (Linux x86-64) are available from the [GitHub releases page](https://github.com/tshakalekholoane/bat/releases), the latest of which can be downloaded from [here](https://github.com/tshakalekholoane/bat/releases/download/1.2/bat).
 
 After downloading the binary, give it permission to execute on your system by running the following command. For example, assuming the binary is located in the user's Downloads folder:
 
