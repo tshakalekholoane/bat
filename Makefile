@@ -20,7 +20,7 @@ audit: test
 build: PKG := main
 build: 
 	@$(info Building bat.)
-	GOOS=linux GOARCH=amd64 go build -ldflags=$(FLAGS) -o=bin/bat .
+	CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags=$(FLAGS) -o=bin/bat .
 
 ## install: install the application
 .PHONY: install
