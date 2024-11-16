@@ -56,7 +56,7 @@ type battery struct {
 }
 
 func (b *battery) has(variable string) (bool, error) {
-	_, err := os.Stat(filepath.Join(b.root, variable))
+	_, err := os.Stat(b.path(variable))
 	if err != nil {
 		if errors.Is(err, fs.ErrNotExist) {
 			return false, nil
