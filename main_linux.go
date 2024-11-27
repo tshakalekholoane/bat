@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	rtdebug "runtime/debug"
+	"slices"
 	"strconv"
 	"strings"
 	"text/template"
@@ -34,12 +35,12 @@ const threshold = "charge_control_end_threshold"
 var (
 	tag string
 
-	events = map[string]struct{}{
-		"hibernate":              {},
-		"hybrid-sleep":           {},
-		"multi-user":             {},
-		"suspend":                {},
-		"suspend-then-hibernate": {},
+	events = [...]string{
+		"hibernate",
+		"hybrid-sleep",
+		"multi-user",
+		"suspend",
+		"suspend-then-hibernate",
 	}
 
 	services = filepath.Join("/", "etc", "systemd", "system")
@@ -246,8 +247,7 @@ func main() {
 		available := make([]string, 0)
 		for _, target := range targets {
 			event := strings.TrimSuffix(target.Unit, ".target")
-			_, ok := events[event]
-			if ok {
+			if slices.Index(events[:], event) != -1 {
 				available = append(available, event)
 			}
 		}
@@ -341,7 +341,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "reset":
-		for event := range events {
+		for _, event := range events {
 			service := "bat-" + event + ".service"
 			output, err := exec.Command("systemctl", "disable", service).CombinedOutput()
 			if err != nil {
