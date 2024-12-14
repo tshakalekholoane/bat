@@ -82,9 +82,9 @@ You can also rename the binary to something else if another program with the sam
 **AUR** : Note that if you download [the AUR package](https://aur.archlinux.org/packages/bat-asus-battery-bin), the command is 
 
 ```shell
-bat-asus-battery <command>
+bat-asus-battery command
 ```
-For more informatiion, see the [wiki](https://wiki.archlinux.org/title/Laptop/ASUS#Battery_charge_threshold).
+For more information, see the [wiki](https://wiki.archlinux.org/title/Laptop/ASUS#Battery_charge_threshold).
 
 ## Examples
 
