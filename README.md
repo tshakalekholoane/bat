@@ -79,6 +79,13 @@ ln -s $HOME/Downloads/bat /usr/local/bin/bat
 
 You can also rename the binary to something else if another program with the same name already exists i.e. [bat](https://github.com/sharkdp/bat).
 
+**AUR** : Note that if you download [the AUR package](https://aur.archlinux.org/packages/bat-asus-battery-bin), the command is 
+
+```shell
+bat-asus-battery <command>
+```
+For more informatiion, see the [wiki](https://wiki.archlinux.org/title/Laptop/ASUS#Battery_charge_threshold).
+
 ## Examples
 
 ```shell
