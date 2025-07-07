@@ -271,10 +271,12 @@ func main() {
 			if err = tmpl.Execute(f, s); err != nil {
 				panic(err)
 			}
-			if err := exec.Command("systemctl", "enable", service).Run(); err != nil {
+			if err = exec.Command("systemctl", "enable", service).Run(); err != nil {
 				panic(err)
 			}
-			f.Close()
+			if err = f.Close(); err != nil {
+				panic(err)
+			}
 		}
 		fmt.Println("Persistence of the current charging threshold enabled.")
 	case "threshold":
