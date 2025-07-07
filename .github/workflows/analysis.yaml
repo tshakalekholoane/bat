@@ -1,4 +1,4 @@
-name: analysis
+name: Analysis
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   analyse:
-    name: analyse
+    name: Analyse
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -34,5 +34,5 @@ jobs:
       - name: Autobuild
         uses: github/codeql-action/autobuild@v3
 
-      - name: Perform CodeQL Analysis
+      - name: Perform CodeQL analysis
         uses: github/codeql-action/analyze@v3

@@ -1,59 +1,71 @@
-name: ci
+name: CI
 
-on: [pull_request]
+on: [push, pull_request]
 
 jobs:
-  verify:
-    name: verify dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-      - run: go mod verify
-
-  vet:
-    name: vet
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-      - run: go vet ./...
-
-  check:
-    name: check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-      - run: go install honnef.co/go/tools/cmd/staticcheck@latest
-      - run: staticcheck ./...
-
   lint:
-    name: lint
+    name: Lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-      - run: go install golang.org/x/lint/golint@latest
-      - run: golint ./...
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-  fmt:
-    name: fmt
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Run lint aggregator
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+
+  build:
+    name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-      - run: go install mvdan.cc/gofumpt@latest
-      - run: |
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Verify dependencies and build application
+        run: go mod verify && make build
+
+  format:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Formatting
+        run: |
+          go install mvdan.cc/gofumpt@latest
           if [[ $(gofumpt -l .) ]]; then
             printf "Format error in the following file(s).\n"
             gofumpt -l .
           fi
 
   test:
-    name: test
+    name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-go@v5
-      - run: make test
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: stable
+
+      - name: Test
+        run: make test

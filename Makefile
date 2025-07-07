@@ -5,15 +5,14 @@ FLAGS = "-X $(PKG).tag=$(TAG)"
 .PHONY: help
 help:
 	@echo 'Usage:'
-	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' | sed -e 's/^/ /'
+	@sed -n 's/^##//p' $(MAKEFILE_LIST) | column -t -s ':' | sed -e 's/^/ /'
 
 ## audit: format, test, and vet the code
 .PHONY: audit
 audit: test
 	@$(info Formatting and vetting.)
 	gofumpt -w .
-	go vet ./...
-	staticcheck ./...
+	golangci-lint run
 
 ## build: build the application
 .PHONY: build 
