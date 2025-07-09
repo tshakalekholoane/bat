@@ -1,6 +1,6 @@
 # `bat`
 
-[![Go Reference](https://pkg.go.dev/badge/tshaka.dev/x/bat.svg)](https://pkg.go.dev/tshaka.dev/x/bat)
+[![Go Reference](https://pkg.go.dev/badge/tshaka.dev/bat.svg)](https://pkg.go.dev/tshaka.dev/bat)
 ![Continuous Integration](https://github.com/tshakalekholoane/bat/actions/workflows/ci.yaml/badge.svg)
 
 ```                                     bat(1)
